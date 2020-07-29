@@ -1,0 +1,65 @@
+﻿  main.c
+D:\dev\CompilerBitwise\CompilerBitwise\main.c(87,20): warning C4018: <: несоответствие типов со знаком и без знака
+D:\dev\CompilerBitwise\CompilerBitwise\main.c(137,39): error C2146: синтаксическая ошибка: отсутствие ")" перед идентификатором "kind"
+D:\dev\CompilerBitwise\CompilerBitwise\main.c(137,39): error C2061: синтаксическая ошибка: идентификатор "kind"
+D:\dev\CompilerBitwise\CompilerBitwise\main.c(137,39): error C2059: синтаксическая ошибка: ;
+D:\dev\CompilerBitwise\CompilerBitwise\main.c(137,43): error C2059: синтаксическая ошибка: )
+D:\dev\CompilerBitwise\CompilerBitwise\main.c(137,45): error C2449: имеется "{" в пределах области видимости файла (возможно, отсутствует заголовок функции)
+D:\dev\CompilerBitwise\CompilerBitwise\main.c(156,1): error C2059: синтаксическая ошибка: }
+D:\dev\CompilerBitwise\CompilerBitwise\main.c(165,2): error C2061: синтаксическая ошибка: идентификатор "TokenKind"
+D:\dev\CompilerBitwise\CompilerBitwise\main.c(171,3): warning C4094: пустое объявление "union" пропускается
+D:\dev\CompilerBitwise\CompilerBitwise\main.c(172,1): error C2059: синтаксическая ошибка: }
+D:\dev\CompilerBitwise\CompilerBitwise\main.c(175,7): error C2061: синтаксическая ошибка: идентификатор "token"
+D:\dev\CompilerBitwise\CompilerBitwise\main.c(175,7): error C2059: синтаксическая ошибка: ;
+D:\dev\CompilerBitwise\CompilerBitwise\main.c(191,7): error C2065: token: необъявленный идентификатор
+D:\dev\CompilerBitwise\CompilerBitwise\main.c(191,8): error C2224: выражение слева от ".start" должно иметь тип структуры или объединения
+D:\dev\CompilerBitwise\CompilerBitwise\main.c(209,8): error C2065: token: необъявленный идентификатор
+D:\dev\CompilerBitwise\CompilerBitwise\main.c(209,9): error C2224: выражение слева от ".kind" должно иметь тип структуры или объединения
+D:\dev\CompilerBitwise\CompilerBitwise\main.c(209,25): error C2065: TOKEN_INT: необъявленный идентификатор
+D:\dev\CompilerBitwise\CompilerBitwise\main.c(210,8): error C2065: token: необъявленный идентификатор
+D:\dev\CompilerBitwise\CompilerBitwise\main.c(210,9): error C2224: выражение слева от ".val" должно иметь тип структуры или объединения
+D:\dev\CompilerBitwise\CompilerBitwise\main.c(269,8): error C2065: token: необъявленный идентификатор
+D:\dev\CompilerBitwise\CompilerBitwise\main.c(269,9): error C2224: выражение слева от ".kind" должно иметь тип структуры или объединения
+D:\dev\CompilerBitwise\CompilerBitwise\main.c(269,26): error C2065: TOKEN_NAME: необъявленный идентификатор
+D:\dev\CompilerBitwise\CompilerBitwise\main.c(270,8): error C2065: token: необъявленный идентификатор
+D:\dev\CompilerBitwise\CompilerBitwise\main.c(270,9): error C2224: выражение слева от ".name" должно иметь тип структуры или объединения
+D:\dev\CompilerBitwise\CompilerBitwise\main.c(270,38): error C2065: token: необъявленный идентификатор
+D:\dev\CompilerBitwise\CompilerBitwise\main.c(270,39): error C2224: выражение слева от ".start" должно иметь тип структуры или объединения
+D:\dev\CompilerBitwise\CompilerBitwise\main.c(270,52): error C2198: str_intern_range: слишком мало аргументов для вызова
+D:\dev\CompilerBitwise\CompilerBitwise\main.c(274,8): error C2065: token: необъявленный идентификатор
+D:\dev\CompilerBitwise\CompilerBitwise\main.c(274,9): error C2224: выражение слева от ".kind" должно иметь тип структуры или объединения
+D:\dev\CompilerBitwise\CompilerBitwise\main.c(277,7): error C2065: token: необъявленный идентификатор
+D:\dev\CompilerBitwise\CompilerBitwise\main.c(277,8): error C2224: выражение слева от ".end" должно иметь тип структуры или объединения
+D:\dev\CompilerBitwise\CompilerBitwise\main.c(285,24): error C2146: синтаксическая ошибка: отсутствие ")" перед идентификатором "token"
+D:\dev\CompilerBitwise\CompilerBitwise\main.c(285,24): error C2061: синтаксическая ошибка: идентификатор "token"
+D:\dev\CompilerBitwise\CompilerBitwise\main.c(285,24): error C2059: синтаксическая ошибка: ;
+D:\dev\CompilerBitwise\CompilerBitwise\main.c(285,29): error C2059: синтаксическая ошибка: )
+D:\dev\CompilerBitwise\CompilerBitwise\main.c(285,31): error C2449: имеется "{" в пределах области видимости файла (возможно, отсутствует заголовок функции)
+D:\dev\CompilerBitwise\CompilerBitwise\main.c(297,1): error C2059: синтаксическая ошибка: }
+D:\dev\CompilerBitwise\CompilerBitwise\main.c(304,14): error C2065: token: необъявленный идентификатор
+D:\dev\CompilerBitwise\CompilerBitwise\main.c(304,15): error C2224: выражение слева от ".kind" должно иметь тип структуры или объединения
+D:\dev\CompilerBitwise\CompilerBitwise\main.c(304,34): error C2065: TOKEN_NAME: необъявленный идентификатор
+D:\dev\CompilerBitwise\CompilerBitwise\main.c(304,42): error C2065: token: необъявленный идентификатор
+D:\dev\CompilerBitwise\CompilerBitwise\main.c(304,43): error C2224: выражение слева от ".name" должно иметь тип структуры или объединения
+D:\dev\CompilerBitwise\CompilerBitwise\main.c(304,55): warning C4033: "is_token_name" должен возвращать значение
+D:\dev\CompilerBitwise\CompilerBitwise\main.c(307,42): error C2146: синтаксическая ошибка: отсутствие ")" перед идентификатором "kind"
+D:\dev\CompilerBitwise\CompilerBitwise\main.c(307,42): error C2061: синтаксическая ошибка: идентификатор "kind"
+D:\dev\CompilerBitwise\CompilerBitwise\main.c(307,42): error C2059: синтаксическая ошибка: ;
+D:\dev\CompilerBitwise\CompilerBitwise\main.c(307,46): error C2059: синтаксическая ошибка: )
+D:\dev\CompilerBitwise\CompilerBitwise\main.c(307,48): error C2449: имеется "{" в пределах области видимости файла (возможно, отсутствует заголовок функции)
+D:\dev\CompilerBitwise\CompilerBitwise\main.c(314,1): error C2059: синтаксическая ошибка: }
+D:\dev\CompilerBitwise\CompilerBitwise\main.c(343,14): warning C4013: is_token: нет определения; предполагается "extern" с возвратом типа "int"
+D:\dev\CompilerBitwise\CompilerBitwise\main.c(343,24): error C2065: TOKEN_INT: необъявленный идентификатор
+D:\dev\CompilerBitwise\CompilerBitwise\main.c(347,22): warning C4013: match_token: нет определения; предполагается "extern" с возвратом типа "int"
+D:\dev\CompilerBitwise\CompilerBitwise\main.c(349,15): warning C4013: expect_token: нет определения; предполагается "extern" с возвратом типа "int"
+D:\dev\CompilerBitwise\CompilerBitwise\main.c(352,59): warning C4013: token_kind_name: нет определения; предполагается "extern" с возвратом типа "int"
+D:\dev\CompilerBitwise\CompilerBitwise\main.c(352,65): error C2065: token: необъявленный идентификатор
+D:\dev\CompilerBitwise\CompilerBitwise\main.c(352,66): error C2224: выражение слева от ".kind" должно иметь тип структуры или объединения
+D:\dev\CompilerBitwise\CompilerBitwise\main.c(369,18): error C2065: token: необъявленный идентификатор
+D:\dev\CompilerBitwise\CompilerBitwise\main.c(369,19): error C2224: выражение слева от ".kind" должно иметь тип структуры или объединения
+D:\dev\CompilerBitwise\CompilerBitwise\main.c(378,18): error C2065: token: необъявленный идентификатор
+D:\dev\CompilerBitwise\CompilerBitwise\main.c(378,19): error C2224: выражение слева от ".kind" должно иметь тип структуры или объединения
+D:\dev\CompilerBitwise\CompilerBitwise\main.c(402,14): error C2065: token: необъявленный идентификатор
+D:\dev\CompilerBitwise\CompilerBitwise\main.c(402,15): error C2224: выражение слева от ".kind" должно иметь тип структуры или объединения
+D:\dev\CompilerBitwise\CompilerBitwise\main.c(403,14): warning C4013: print_token: нет определения; предполагается "extern" с возвратом типа "int"
+D:\dev\CompilerBitwise\CompilerBitwise\main.c(403,20): error C2065: token: необъявленный идентификатор

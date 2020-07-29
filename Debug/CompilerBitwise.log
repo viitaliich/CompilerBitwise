@@ -1,0 +1,5 @@
+﻿  main.c
+D:\dev\CompilerBitwise\CompilerBitwise\common.c(103,20): warning C4018: <: несоответствие типов со знаком и без знака
+D:\dev\CompilerBitwise\CompilerBitwise\lex.c(139,11): warning C4101: mod: неиспользованная локальная переменная
+D:\dev\CompilerBitwise\CompilerBitwise\lex.c(571,1): warning C4244: инициализация: преобразование "uint64_t" в "int", возможна потеря данных
+  CompilerBitwise.vcxproj -> D:\dev\CompilerBitwise\CompilerBitwise\Debug\CompilerBitwise.exe
