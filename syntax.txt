@@ -48,13 +48,6 @@ FLOAT = [0-9]*[.]?[0-9]*([eE][+-]?[0-9]+)?
 CHAR = '\'' . '\''
 STR = '"' [^"]* '"'
 
-
-
-
-
-
-
-
 AST S-expression format:
 
 func fact(n: int): int {
@@ -78,6 +71,10 @@ Declarations:
 
 type_list = type (',' type)*
 name_list = NAME (',' NAME)*
+
+typedef f = func(int):int
+typedef f = func(int):int[16]
+typedef f = (func(int):int)[16]
 
 base_type = NAME
           | 'func' '(' type_list? ')' (':' type)?
@@ -137,6 +134,12 @@ y := 2
 n := sizeof(x + y)
 m := sizeof(:int[16]) // 16*sizeof(int)
 
+var v: Vector
+
+v := Vector{1,2}
+v := (:Vector){1,2} // synonym for prev line
+a := (:Vector*[3]){p,q,r}
+
 u8 := uint8(42)
 u32 = uint32(u8)
 
@@ -159,13 +162,15 @@ operand_expr = INT
 base_expr = operand_expr ('(' expr_list ')' | '[' expr ']' | '.' NAME)*
 unary_expr = [+-~!&*] unary_expr
            | base_expr
-mul_op = '*' | '/' | '%' | '&' | LSHIFT | RSHIFT
+mul_op = [*/%&] | LSHIFT | RSHIFT
 mul_expr = unary_expr (mul_op unary_expr)*
-add_op = '+' | '-' | '|' | '^'
+add_op = [+-|^]
 add_expr = mul_expr (add_op mul_expr)*
-cmp_op = EQ | NOTEQ | '<' | LTEQ | '>' | '>='
-cmp_expr = mul_expr (cmp_op mul_expr)*
+cmp_op = [<>] | EQ | NOTEQ | LTEQ | GTEQ
+cmp_expr = add_expr (cmp_op add_expr)*
 and_expr = cmp_expr (AND cmp_expr)*
 or_expr = and_expr (OR and_expr)*
 ternary_expr = or_expr ('?' ternary_expr ':' ternary_expr)?
 expr = ternary_expr
+
+var v: Vector

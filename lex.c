@@ -1,7 +1,84 @@
+const char* typedef_keyword;
+const char* enum_keyword;
+const char* struct_keyword;
+const char* union_keyword;
+const char* var_keyword;
+const char* const_keyword;
+const char* func_keyword;
+const char* sizeof_keyword;
+const char* break_keyword;
+const char* continue_keyword;
+const char* return_keyword;
+const char* if_keyword;
+const char* else_keyword;
+const char* while_keyword;
+const char* do_keyword;
+const char* for_keyword;
+const char* switch_keyword;
+const char* case_keyword;
+const char* default_keyword;
+
+const char* first_keyword;
+const char* last_keyword;
+const char** keywords;
+
+#define KEYWORD(name) name##_keyword = str_intern(#name); buf_push(keywords, name##_keyword)	// ##  concatenates the arguments.
+
+#if 0
+const char* keyword_if;
+const char* keyword_for;
+const char* keyword_while;
+
+void init_keywords() {
+	keyword_if = str_intern("if");
+	keyword_if = str_intern("for");
+	keyword_if = str_intern("while");
+}
+#endif
+
+// Where is it using?
+void init_keywords() {
+	static bool inited;
+	if (inited) {
+		return;
+	}
+	char* arena_end = str_arena.end;
+	KEYWORD(typedef);
+	KEYWORD(enum);
+	KEYWORD(struct);
+	KEYWORD(union);
+	KEYWORD(const);
+	KEYWORD(var);
+	KEYWORD(func);
+	KEYWORD(sizeof);
+	KEYWORD(break);
+	KEYWORD(continue);
+	KEYWORD(return);
+	KEYWORD(if);
+	KEYWORD(else);
+	KEYWORD(while);
+	KEYWORD(do);
+	KEYWORD(for);
+	KEYWORD(switch);
+	KEYWORD(case);
+	KEYWORD(default);
+	assert(str_arena.end == arena_end);		// ???
+	first_keyword = typedef_keyword;
+	last_keyword = default_keyword;
+	inited = true;
+}
+
+#undef KEYWORD
+
+bool is_keyword_str(const char* str) {
+	return first_keyword <= str && str <= last_keyword;
+}
+
 typedef enum TokenKind {
 	TOKEN_EOF = 0,
 	// Reserve first 128 values for one-char tokens
 	TOKEN_LAST_CHAR = 127,
+	TOKEN_KEYWORD,
 	TOKEN_INT,
 	TOKEN_FLOAT,
 	TOKEN_STR,
@@ -18,6 +95,7 @@ typedef enum TokenKind {
 	TOKEN_DEC,
 	TOKEN_COLON_ASSIGN,
 	TOKEN_ADD_ASSIGN,
+	TOKEN_FIRST_ASSIGN = TOKEN_ADD_ASSIGN,		// ???
 	TOKEN_SUB_ASSIGN,
 	TOKEN_OR_ASSIGN,
 	TOKEN_AND_ASSIGN,
@@ -27,6 +105,7 @@ typedef enum TokenKind {
 	TOKEN_MUL_ASSIGN,
 	TOKEN_DIV_ASSIGN,
 	TOKEN_MOD_ASSIGN,
+	TOKEN_LAST_ASSIGN = TOKEN_MOD_ASSIGN,		// ???
 } TokenKind;
 
 typedef enum TokenMod {
@@ -37,6 +116,60 @@ typedef enum TokenMod {
 	TOKENMOD_CHAR,
 }TokenMod;
 
+const char* token_kind_names[] = {
+	[TOKEN_EOF] = "EOF",
+	[TOKEN_INT] = "int",
+	[TOKEN_FLOAT] = "float",
+	[TOKEN_STR] = "string",
+	[TOKEN_NAME] = "name",
+	[TOKEN_LSHIFT] = "<<",
+	[TOKEN_RSHIFT] = ">>",
+	[TOKEN_EQ] = "==",
+	[TOKEN_NOTEQ] = "!=",
+	[TOKEN_LTEQ] = "<=",
+	[TOKEN_GTEQ] = ">=",
+	[TOKEN_AND] = "&&",
+	[TOKEN_OR] = "||",
+	[TOKEN_INC] = "++",
+	[TOKEN_DEC] = "--",
+	[TOKEN_COLON_ASSIGN] = ":=",
+	[TOKEN_ADD_ASSIGN] = "+=",
+	[TOKEN_SUB_ASSIGN] = "-=",
+	[TOKEN_OR_ASSIGN] = "|=",
+	[TOKEN_AND_ASSIGN] = "&=",
+	[TOKEN_XOR_ASSIGN] = "^=",
+	[TOKEN_MUL_ASSIGN] = "+=",
+	[TOKEN_DIV_ASSIGN] = "/=",
+	[TOKEN_MOD_ASSIGN] = "%=",
+	[TOKEN_LSHIFT_ASSIGN] = "<<=",
+	[TOKEN_RSHIFT_ASSIGN] = ">>=",
+};
+
+const char* token_kind_name(TokenKind kind) {
+	if (kind < sizeof(token_kind_names) / sizeof(*token_kind_names)) {		// ???
+		return token_kind_names[kind];
+	}
+	else {
+		return NULL;
+	}
+}
+
+size_t copy_token_kind_str(char* dest, size_t dest_size, TokenKind kind) {
+	size_t n = 0;
+	const char* name = token_kind_name(kind);
+	if (name) {
+		n = snprintf(dest, dest_size, "%s", name);
+	}
+	else if (kind < 128 && isprint(kind)) {
+		n = snprintf(dest, dest_size, "%c", kind);
+	}
+	else {
+		n = snprintf(dest, dest_size, "<ASCII %d>", kind);
+	}
+	return n;
+}
+
+#if 0
 size_t copy_token_kind_str(char* dest, size_t dest_size, TokenKind kind) {
 	size_t n = 0;
 	switch (kind) {
@@ -63,6 +196,7 @@ size_t copy_token_kind_str(char* dest, size_t dest_size, TokenKind kind) {
 	}
 	return n;
 }
+#endif
 
 // Warning: This returns a pointer to a static internal buffer, so the next call will overwrite it.
 const char* temp_token_kind_str(TokenKind kind) {
@@ -87,17 +221,6 @@ typedef struct Token {
 
 Token token;	// global token, corresponds to the current token.
 const char* stream;
-/*
-const char* keyword_if;
-const char* keyword_for;
-const char* keyword_while;
-
-void init_keywords() {
-	keyword_if = str_intern("if");
-	keyword_if = str_intern("for");
-	keyword_if = str_intern("while");
-}
-*/
 
 uint8_t char_to_digit[256] = {
 	['0'] = 0,
@@ -227,7 +350,6 @@ void scan_char() {
 			syntax_error("Invalid char literal escape '\\%c'.", *stream);
 		}
 		stream++;
-
 	}
 	else {
 		val = *stream;
@@ -347,8 +469,8 @@ repeat:								// that's not good ???
 		while (isalnum(*stream) || *stream == '_') {
 			stream++;
 		}
-		token.kind = TOKEN_NAME;
 		token.name = str_intern_range(token.start, stream);
+		token.kind = is_keyword_str(token.name) ? TOKEN_KEYWORD : TOKEN_NAME;
 		break;
 	}
 	case '<':
@@ -383,14 +505,14 @@ repeat:								// that's not good ???
 		break;
 
 		CASE1('^', '=', TOKEN_XOR_ASSIGN)		// simple XOR ???
-			CASE1(':', '=', TOKEN_COLON_ASSIGN)
-			CASE1('*', '=', TOKEN_MUL_ASSIGN)
-			CASE1('/', '=', TOKEN_DIV_ASSIGN)
-			CASE1('%', '=', TOKEN_MOD_ASSIGN)
-			CASE2('+', '=', TOKEN_ADD_ASSIGN, '+', TOKEN_INC)
-			CASE2('-', '=', TOKEN_SUB_ASSIGN, '-', TOKEN_DEC)	// no differrence between unary and binary minus at lex time, its parse time job
-			CASE2('&', '=', TOKEN_AND_ASSIGN, '&', TOKEN_AND)
-			CASE2('|', '=', TOKEN_OR_ASSIGN, '|', TOKEN_OR)
+		CASE1(':', '=', TOKEN_COLON_ASSIGN)
+		CASE1('*', '=', TOKEN_MUL_ASSIGN)
+		CASE1('/', '=', TOKEN_DIV_ASSIGN)
+		CASE1('%', '=', TOKEN_MOD_ASSIGN)
+		CASE2('+', '=', TOKEN_ADD_ASSIGN, '+', TOKEN_INC)
+		CASE2('-', '=', TOKEN_SUB_ASSIGN, '-', TOKEN_DEC)	// no differrence between unary and binary minus at lex time, its parse time job
+		CASE2('&', '=', TOKEN_AND_ASSIGN, '&', TOKEN_AND)
+		CASE2('|', '=', TOKEN_OR_ASSIGN, '|', TOKEN_OR)
 
 	default:
 		token.kind = *stream++;
@@ -407,32 +529,35 @@ void init_stream(const char* str) {
 	next_token();
 }
 
-void print_token(Token token) {
-	switch (token.kind) {
-	case TOKEN_INT:
-		printf("TOKEN INT: %" PRIu64 "\n", token.int_val);		// % llu ???
-		break;
-	case TOKEN_FLOAT:
-		printf("TOKEN FLOAT: %f\n", token.float_val);
-		break;
-	case TOKEN_NAME:
-		printf("TOKEN_NAME: %.*s\n", (int)(token.end - token.start), token.start);		// casting is not good, but what can we do)))
-		break;
-	default:
-		printf("TOKEN '%c'\n", token.kind);
-		break;
-	}
+bool is_token(TokenKind kind) {
+	return token.kind == kind;
 }
 
-static inline bool is_token(TokenKind kind) {
-	return token.kind == kind;			// token is current lexema, global variable
+
+bool is_token_eof() {
+	return token.kind == TOKEN_EOF;
 }
 
-static inline bool is_token_name(const char* name) {
+bool is_token_name(const char* name) {
 	return token.kind == TOKEN_NAME && token.name == name;
 }
 
-static inline bool match_token(TokenKind kind) {
+bool is_keyword(const char* name) {
+	return is_token(TOKEN_KEYWORD) && token.name == name;
+}
+
+bool match_keyword(const char* name) {
+	if (is_keyword(name)) {
+		next_token();
+		return true;
+	}
+	else {
+		return false;
+	}
+}
+
+
+bool match_token(TokenKind kind) {
 	if (is_token(kind)) {
 		next_token();
 		return true;
@@ -442,7 +567,7 @@ static inline bool match_token(TokenKind kind) {
 	}
 }
 
-static inline bool expect_token(TokenKind kind) {
+bool expect_token(TokenKind kind) {
 	if (is_token(kind)) {
 		next_token();
 		return true;
@@ -453,6 +578,16 @@ static inline bool expect_token(TokenKind kind) {
 		fatal("expected token %s, got %s", buf, token_kind_str(token.kind));
 		return false;
 	}
+}
+
+void keyword_test() {
+	init_keywords();
+	assert(is_keyword_str(first_keyword));
+	assert(is_keyword_str(last_keyword));
+	for (const char** it = keywords; it != buf_end(keywords); it++) {
+		assert(is_keyword_str(*it));
+	}
+	assert(!is_keyword_str(str_intern("foo")));
 }
 
 #define assert_token(x) assert(match_token(x))

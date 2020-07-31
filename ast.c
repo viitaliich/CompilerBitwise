@@ -1,77 +1,177 @@
-#include "ast.h"
+Arena ast_arena;
 
-Typespec* typespec_alloc(TypespecKind kind) {
-	Typespec* t = xcalloc(1, sizeof(Typespec));
+void* ast_alloc(size_t size) {
+	assert(size != 0);
+	void* ptr = arena_alloc(&ast_arena, size);
+	memset(ptr, 0, size);		// set 0 in given memory chunk		// why do we do this?	???
+	return ptr;
+}
+
+// where is it using ???
+void* ast_dup(const void* src, size_t size) {
+	if (size == 0) {
+		return NULL;
+	}
+	void* ptr = arena_alloc(&ast_arena, size);
+	memcpy(ptr, src, size);
+	return ptr;
+}
+
+// Constructors
+
+Typespec* typespec_new(TypespecKind kind) {
+	Typespec* t = ast_alloc(sizeof(Typespec));
 	t->kind = kind;
 	return t;
 }
 
 Typespec* typespec_name(const char* name) {
-	Typespec* t = typespec_alloc(TYPESPEC_NAME);
+	Typespec* t = typespec_new(TYPESPEC_NAME);
 	t->name = name;
 	return t;
 }
 
 Typespec* typespec_ptr(Typespec* elem) {
-	Typespec* t = typespec_alloc(TYPESPEC_PTR);
+	Typespec* t = typespec_new(TYPESPEC_PTR);
 	t->ptr.elem = elem;
 	return t;
 }
 
 Typespec* typespec_array(Typespec* elem, Expr* size) {
-	Typespec* t = typespec_alloc(TYPESPEC_ARRAY);
+	Typespec* t = typespec_new(TYPESPEC_ARRAY);
 	t->array.elem = elem;
 	t->array.size = size;
 	return t;
 }
 
-Typespec* typespec_func(Typespec** args, size_t num_args, Typespec* ret) {
-	Typespec* t = typespec_alloc(TYPESPEC_FUNC);
+Typespec* typespec_func(Typespec** args, size_t num_args, Typespec* ret) {			
+	Typespec* t = typespec_new(TYPESPEC_FUNC);
 	t->func.args = args;
 	t->func.num_args = num_args;
 	t->func.ret = ret;
 	return t;
 }
 
-Expr* expr_alloc(ExprKind kind) {
-	Expr* e = xcalloc(1, sizeof(Expr));
+Decl* decl_new(DeclKind kind, const char* name) {
+	Decl* d = ast_alloc(sizeof(Decl));
+	d->kind = kind;
+	d->name = name;
+	return d;
+}
+
+Decl* decl_enum(const char* name, EnumItem* items, size_t num_items) {
+	Decl* d = decl_new(DECL_ENUM, name);
+	d->enum_decl.items = items;
+	d->enum_decl.num_items = num_items;
+	return d;
+}
+
+Decl* decl_aggregate(DeclKind kind, const char* name, AggregateItem* items, size_t num_items) {		// ???
+	assert(kind == DECL_STRUCT || kind == DECL_UNION);
+	Decl* d = decl_new(kind, name);
+	d->aggregate.items = items;
+	d->aggregate.num_items = num_items;
+	return d;
+}
+
+Decl* decl_union(const char* name, AggregateItem* items, size_t num_items) {	// ???
+	Decl* d = decl_new(DECL_UNION, name);
+	d->aggregate.items = items;
+	d->aggregate.num_items = num_items;
+	return d;
+}
+
+Decl* decl_var(const char* name, Typespec* type, Expr* expr) {
+	Decl* d = decl_new(DECL_VAR, name);
+	d->var.type = type;
+	d->var.expr = expr;
+	return d;
+}
+
+Decl* decl_func(const char* name, FuncParam* params, size_t num_params, Typespec* ret_type, StmtBlock block) {
+	Decl* d = decl_new(DECL_FUNC, name);
+	d->func.params = params;
+	d->func.num_params = num_params;
+	d->func.ret_type = ret_type;
+	d->func.block = block;
+	return d;
+}
+
+Decl* decl_const(const char* name, Expr* expr) {
+	Decl* d = decl_new(DECL_CONST, name);
+	d->const_decl.expr = expr;
+	return d;
+}
+
+Decl* decl_typedef(const char* name, Typespec* type) {
+	Decl* d = decl_new(DECL_TYPEDEF, name);
+	d->typedef_decl.type = type;
+	return d;
+}
+
+
+Expr* expr_new(ExprKind kind) {
+	Expr* e = ast_alloc(sizeof(Expr));
 	e->kind = kind;
 	return e;
 }
 
+Expr* expr_sizeof_expr(Expr* expr) {
+	Expr* e = expr_new(EXPR_SIZEOF);
+	e->sizeof_expr.kind = SIZEOF_EXPR;
+	e->sizeof_expr.expr = expr;
+	return e;
+}
+
+Expr* expr_sizeof_type(Typespec* type) {
+	Expr* e = expr_new(EXPR_SIZEOF);
+	e->sizeof_expr.kind = SIZEOF_TYPE;
+	e->sizeof_expr.type = type;
+	return e;
+}
+
+
 Expr* expr_int(uint64_t int_val) {
-	Expr* e = expr_alloc(EXPR_INT);
+	Expr* e = expr_new(EXPR_INT);
 	e->int_val = int_val;
 	return e;
 }
 
 Expr* expr_float(double float_val) {
-	Expr* e = expr_alloc(EXPR_FLOAT);
+	Expr* e = expr_new(EXPR_FLOAT);
 	e->float_val = float_val;
 	return e;
 }
 
 Expr* expr_str(const char* str_val) {
-	Expr* e = expr_alloc(EXPR_STR);
+	Expr* e = expr_new(EXPR_STR);
 	e->str_val = str_val;
 	return e;
 }
 
 Expr* expr_name(const char* name) {
-	Expr* e = expr_alloc(EXPR_NAME);
+	Expr* e = expr_new(EXPR_NAME);
 	e->name = name;
 	return e;
 }
 
+Expr* expr_compound(Typespec* type, Expr** args, size_t num_args) {
+	Expr* e = expr_new(EXPR_COMPOUND);
+	e->compound.type = type;
+	e->compound.args = args;
+	e->compound.num_args = num_args;
+	return e;
+}
+
 Expr* expr_cast(Typespec* type, Expr* expr) {
-	Expr* e = expr_alloc(EXPR_CAST);
+	Expr* e = expr_new(EXPR_CAST);
 	e->cast.type = type;
 	e->cast.expr = expr;
 	return e;
 }
 
 Expr* expr_call(Expr* expr, Expr** args, size_t num_args) {
-	Expr* e = expr_alloc(EXPR_CALL);
+	Expr* e = expr_new(EXPR_CALL);
 	e->call.expr = expr;
 	e->call.args = args;
 	e->call.num_args = num_args;
@@ -79,163 +179,141 @@ Expr* expr_call(Expr* expr, Expr** args, size_t num_args) {
 }
 
 Expr* expr_index(Expr* expr, Expr* index) {
-	Expr* e = expr_alloc(EXPR_INDEX);
+	Expr* e = expr_new(EXPR_INDEX);
 	e->index.expr = expr;
 	e->index.index = index;
 	return e;
 }
 
 Expr* expr_field(Expr* expr, const char* name) {
-	Expr* e = expr_alloc(EXPR_FIELD);
+	Expr* e = expr_new(EXPR_FIELD);
 	e->field.expr = expr;
 	e->field.name = name;
 	return e;
 }
 
 Expr* expr_unary(TokenKind op, Expr* expr) {
-	Expr* e = expr_alloc(EXPR_UNARY);
+	Expr* e = expr_new(EXPR_UNARY);
 	e->unary.op = op;
 	e->unary.expr = expr;
 	return e;
 }
 
 Expr* expr_binary(TokenKind op, Expr* left, Expr* right) {
-	Expr* e = expr_alloc(EXPR_BINARY);
+	Expr* e = expr_new(EXPR_BINARY);
 	e->binary.op = op;
 	e->binary.left = left;
 	e->binary.right = right;
 	return e;
 }
 
-Expr* expr_ternary(Expr* cond, Expr* if_true, Expr* if_false) {
-	Expr* e = expr_alloc(EXPR_TERNARY);
+Expr* expr_ternary(Expr* cond, Expr* then_expr, Expr* else_expr) {
+	Expr* e = expr_new(EXPR_TERNARY);
 	e->ternary.cond = cond;
-	e->ternary.if_true = if_true;
-	e->ternary.if_false = if_false;
+	e->ternary.then_expr = then_expr;
+	e->ternary.else_expr = else_expr;
 	return e;
 }
 
-void print_expr(Expr* expr);
-
-void print_typespec(Typespec* type) {
-	Typespec* t = type;
-	switch (t->kind) {
-	case TYPESPEC_NAME:
-		printf("%s", t->name);
-		break;
-	case TYPESPEC_FUNC:
-		printf("(func (");
-		for (Typespec** it = t->func.args; it != t->func.args + t->func.num_args; it++) {
-			printf(" ");
-			print_typespec(*it);
-		}
-		printf(") ");
-		print_typespec(t->func.ret);
-		printf(")");
-		break;
-	case TYPESPEC_ARRAY:
-		printf("(array ");
-		print_typespec(t->array.elem);
-		printf(" ");
-		print_expr(t->array.size);
-		printf(")");
-		break;
-	case TYPESPEC_PTR:
-		printf("(ptr ");
-		print_typespec(t->ptr.elem);
-		printf(")");
-		break;
-	default:
-		assert(0);
-		break;
-	}
+Stmt* stmt_new(StmtKind kind) {
+	Stmt* s = ast_alloc(sizeof(Stmt));
+	s->kind = kind;
+	return s;
 }
 
-void print_expr(Expr* expr) {
-	Expr* e = expr;
-	switch (e->kind) {
-	case EXPR_INT:
-		printf("%" PRIu64, e->int_val);
-		break;
-	case EXPR_FLOAT:
-		printf("%f", e->float_val);
-		break;
-	case EXPR_STR:
-		printf("\"%s\"", e->str_val);
-		break;
-	case EXPR_NAME:
-		printf("%s", e->name);
-		break;
-	case EXPR_CAST:
-		printf("(cast ");
-		print_typespec(e->cast.type);
-		printf(" ");
-		print_expr(e->cast.expr);
-		printf(")");
-		break;
-	case EXPR_CALL:
-		printf("(");
-		print_expr(e->call.expr);
-		for (Expr** it = e->call.args; it != e->call.args + e->call.num_args; it++) {
-			printf(" ");
-			print_expr(*it);
-		}
-		printf(")");
-		break;
-	case EXPR_INDEX:
-		printf("(index ");
-		print_expr(e->index.expr);
-		printf(" ");
-		print_expr(e->index.index);
-		printf(")");
-		break;
-	case EXPR_FIELD:
-		printf("(field ");
-		print_expr(e->field.expr);
-		printf(" %s)", e->field.name);
-		break;
-	case EXPR_COMPOUND:
-		printf("(compound");
-		for (Expr** it = e->compound.args; it != e->compound.args + e->compound.num_args; it++) {
-			printf(" ");
-			print_expr(*it);
-		}
-		printf(")");
-		break;
-	case EXPR_UNARY:
-		printf("(%c ", e->unary.op);
-		print_expr(e->unary.expr);
-		printf(")");
-		break;
-	case EXPR_BINARY:
-		printf("(%c ", e->binary.op);
-		print_expr(e->binary.left);
-		printf(" ");
-		print_expr(e->binary.right);
-		printf(")");
-		break;
-	case EXPR_TERNARY:
-		printf("(if ");
-		print_expr(e->ternary.cond);
-		printf(" ");
-		print_expr(e->ternary.if_true);
-		printf(" ");
-		print_expr(e->ternary.if_false);
-		printf(")");
-		break;
-	default:
-		assert(0);
-		break;
-	}
+Stmt* stmt_return(Expr* expr) {
+	Stmt* s = stmt_new(STMT_RETURN);
+	s->return_stmt.expr = expr;
+	return s;
 }
+
+Stmt* stmt_break() {
+	return stmt_new(STMT_BREAK);
+}
+
+Stmt* stmt_continue() {
+	return stmt_new(STMT_CONTINUE);
+}
+
+Stmt* stmt_block(StmtBlock block) {
+	Stmt* s = stmt_new(STMT_BLOCK);
+	s->block = block;
+	return s;
+}
+
+Stmt* stmt_if(Expr* cond, StmtBlock then_block, ElseIf* elseifs, size_t num_elseifs, StmtBlock else_block) {
+	Stmt* s = stmt_new(STMT_IF);
+	s->if_stmt.cond = cond;
+	s->if_stmt.then_block = then_block;
+	s->if_stmt.elseifs = elseifs;
+	s->if_stmt.num_elseifs = num_elseifs;
+	s->if_stmt.else_block = else_block;
+	return s;
+}
+
+Stmt* stmt_while(Expr* cond, StmtBlock block) {
+	Stmt* s = stmt_new(STMT_WHILE);
+	s->while_stmt.cond = cond;
+	s->while_stmt.block = block;
+	return s;
+}
+
+Stmt* stmt_do_while(Expr* cond, StmtBlock block) {
+	Stmt* s = stmt_new(STMT_DO_WHILE);
+	s->while_stmt.cond = cond;
+	s->while_stmt.block = block;
+	return s;
+}
+
+Stmt* stmt_for(Stmt* init, Expr* cond, Stmt* next, StmtBlock block) {
+	Stmt* s = stmt_new(STMT_FOR);
+	s->for_stmt.init = init;
+	s->for_stmt.cond = cond;
+	s->for_stmt.next = next;
+	s->for_stmt.block = block;
+	return s;
+}
+
+Stmt* stmt_switch(Expr* expr, SwitchCase* cases, size_t num_cases) {
+	Stmt* s = stmt_new(STMT_SWITCH);
+	s->switch_stmt.expr = expr;
+	s->switch_stmt.cases = cases;
+	s->switch_stmt.num_cases = num_cases;
+	return s;
+}
+
+Stmt* stmt_assign(TokenKind op, Expr* left, Expr* right) {
+	Stmt* s = stmt_new(STMT_ASSIGN);
+	s->assign.op = op;
+	s->assign.left = left;
+	s->assign.right = right;
+	return s;
+}
+
+Stmt* stmt_init(const char* name, Expr* expr) {
+	Stmt* s = stmt_new(STMT_INIT);
+	s->init.name = name;
+	s->init.expr = expr;
+	return s;
+}
+
+Stmt* stmt_expr(Expr* expr) {
+	Stmt* s = stmt_new(STMT_EXPR);
+	s->expr = expr;
+	return s;
+}
+
+
+#if 0
 
 void expr_test() {
 	Expr* exprs[] = {
 		expr_binary('+', expr_int(1), expr_int(2)),
+		expr_binary('-', expr_binary('+', expr_int(1), expr_int(2)), expr_int(3)),
 		expr_unary('-', expr_float(3.14)),
 		expr_ternary(expr_name("flag"), expr_str("true"), expr_str("false")),
 		expr_field(expr_name("person"), "name"),
-		expr_call(expr_name("fact"), (Expr * []) { expr_int(42) }, 1),
+		expr_call(expr_name("fact"), (Expr* []) { expr_int(42) }, 1),			// nice feature, like with structs
 		expr_index(expr_field(expr_name("person"), "siblings"), expr_int(3)),
 		expr_cast(typespec_ptr(typespec_name("int")), expr_name("void_ptr")),
 	};
@@ -249,5 +327,12 @@ void ast_test() {
 	expr_test();
 }
 
+#endif
 
 // Linked lists are very good for parsers
+
+// In many languages 
+//	function calls a(x), 
+//	field access a.x, 
+//	array element access a[x]
+// are processed like left assosiative binary operator

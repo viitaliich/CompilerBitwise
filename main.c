@@ -13,15 +13,21 @@
 
 #include "common.c"
 #include "lex.c"
-#include "ast.c"
+#include "ast.h"	// ???		why is it here?
+#include "ast.c"    
+#include "print.c"
+#include "parse.c"
 
-void run_tests() {
+
+void main_test() {
 	common_test();
 	lex_test();
-	ast_test();
+	// ast_test();		// ???
+	// print_test();
+	parse_test();
 }
 
 int main(int argc, char** argv) {
-	run_tests();
+	main_test();
 	return 0;
 }

@@ -27,6 +27,12 @@
     <ClCompile Include="ast.c">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
+    <ClCompile Include="print.c">
+      <Filter>Исходные файлы</Filter>
+    </ClCompile>
+    <ClCompile Include="parse.c">
+      <Filter>Исходные файлы</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Text Include="syntax.txt">
