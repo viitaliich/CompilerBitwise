@@ -117,16 +117,14 @@ Expr* expr_new(ExprKind kind) {
 }
 
 Expr* expr_sizeof_expr(Expr* expr) {
-	Expr* e = expr_new(EXPR_SIZEOF);
-	e->sizeof_expr.kind = SIZEOF_EXPR;
-	e->sizeof_expr.expr = expr;
+	Expr* e = expr_new(EXPR_SIZEOF_EXPR);
+	e->sizeof_expr = expr;
 	return e;
 }
 
 Expr* expr_sizeof_type(Typespec* type) {
-	Expr* e = expr_new(EXPR_SIZEOF);
-	e->sizeof_expr.kind = SIZEOF_TYPE;
-	e->sizeof_expr.type = type;
+	Expr* e = expr_new(EXPR_SIZEOF_TYPE);
+	e->sizeof_type = type;
 	return e;
 }
 
@@ -221,6 +219,12 @@ Stmt* stmt_new(StmtKind kind) {
 	return s;
 }
 
+Stmt* stmt_decl(Decl* decl) {
+	Stmt* s = stmt_new(STMT_DECL);
+	s->decl = decl;
+	return s;
+}
+
 Stmt* stmt_return(Expr* expr) {
 	Stmt* s = stmt_new(STMT_RETURN);
 	s->return_stmt.expr = expr;
@@ -290,7 +294,7 @@ Stmt* stmt_assign(TokenKind op, Expr* left, Expr* right) {
 	return s;
 }
 
-Stmt* stmt_init(const char* name, Expr* expr) {
+Stmt* stmt_init(const char* name, Expr* expr) {		// initialize variable
 	Stmt* s = stmt_new(STMT_INIT);
 	s->init.name = name;
 	s->init.expr = expr;
@@ -302,32 +306,6 @@ Stmt* stmt_expr(Expr* expr) {
 	s->expr = expr;
 	return s;
 }
-
-
-#if 0
-
-void expr_test() {
-	Expr* exprs[] = {
-		expr_binary('+', expr_int(1), expr_int(2)),
-		expr_binary('-', expr_binary('+', expr_int(1), expr_int(2)), expr_int(3)),
-		expr_unary('-', expr_float(3.14)),
-		expr_ternary(expr_name("flag"), expr_str("true"), expr_str("false")),
-		expr_field(expr_name("person"), "name"),
-		expr_call(expr_name("fact"), (Expr* []) { expr_int(42) }, 1),			// nice feature, like with structs
-		expr_index(expr_field(expr_name("person"), "siblings"), expr_int(3)),
-		expr_cast(typespec_ptr(typespec_name("int")), expr_name("void_ptr")),
-	};
-	for (Expr** it = exprs; it != exprs + sizeof(exprs) / sizeof(*exprs); it++) {
-		print_expr(*it);
-		printf("\n");
-	}
-}
-
-void ast_test() {
-	expr_test();
-}
-
-#endif
 
 // Linked lists are very good for parsers
 

@@ -83,6 +83,8 @@ typedef struct BufHdr {		//Buf header
 
 #define buf_free(b) ((b) ? (free(buf__hdr(b)), (b) = NULL) : 0)
 #define buf_push(b, ...) (buf__fit((b), 1 + buf_len(b)), (b)[buf__hdr(b)->len++] = (__VA_ARGS__))
+#define buf_printf(b, ...) ((b) = buf__printf((b), __VA_ARGS__))
+#define buf_clear(b) ((b) ? buf__hdr(b)->len = 0 : 0)		// resets the buffer but doesn't free it
 
 // rare case when use it, so it will not polute the cashe. 
 void* buf__grow(const void* buf, size_t new_len, size_t elem_size) {
@@ -101,6 +103,27 @@ void* buf__grow(const void* buf, size_t new_len, size_t elem_size) {
 	}
 	new_hdr->cap = new_cap;
 	return new_hdr->buf;
+}
+
+// Treating a character buffer as an append only string buffer.
+// It's like write add to a file using fprintf() or sth. like this
+// concatenate outputs
+char* buf__printf(char* buf, const char* fmt, ...) {
+	assert(!buf || (buf_len(buf) != 0 && buf[buf_len(buf) - 1] == 0));
+	va_list args;
+	va_start(args, fmt);
+	size_t n = vsnprintf(NULL, 0, fmt, args);
+	va_end(args);
+	if (buf_len(buf) == 0) {
+		n++;
+	}
+	buf_fit(buf, n + buf_len(buf));
+	char* dest = buf_len(buf) == 0 ? buf : buf + buf_len(buf) - 1;
+	va_start(args, fmt);
+	vsnprintf(dest, buf + buf_cap(buf) - dest, fmt, args);
+	va_end(args);
+	buf__hdr(buf)->len += n;
+	return buf;
 }
 
 void buf_test() {
@@ -123,6 +146,12 @@ void buf_test() {
 	buf_free(buf);
 	assert(buf == NULL);
 	assert(buf_len(buf) == 0);
+
+	char* str = NULL;
+	buf_printf(str, "One: %d\n", 1);
+	assert(strcmp(str, "One: 1\n") == 0);
+	buf_printf(str, "Hex: 0x%x\n", 0x12345678);
+	assert(strcmp(str, "One: 1\nHex: 0x12345678\n") == 0);
 	
 }
 
@@ -142,6 +171,7 @@ typedef struct Arena {
 void arena_grow(Arena* arena, size_t min_size) {
 	size_t size = ALIGN_UP(MAX(ARENA_BLOCK_SIZE, min_size), ARENA_ALIGNMENT);
 	arena->ptr = xmalloc(size);
+	assert(arena->ptr == ALIGN_DOWN_PTR(arena->ptr, ARENA_ALIGNMENT));
 	arena->end = arena->ptr + size;
 	buf_push(arena->blocks, arena->ptr);
 }
@@ -162,6 +192,7 @@ void arena_free(Arena* arena) {
 	for (int8_t** it = arena->blocks; it != buf_end(arena->blocks); it++) {
 		free(*it);
 	}
+	buf_free(arena->blocks);	// fix not freeing arena block array		???
 }
 
 // string interning

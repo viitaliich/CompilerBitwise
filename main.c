@@ -22,8 +22,7 @@
 void main_test() {
 	common_test();
 	lex_test();
-	// ast_test();		// ???
-	// print_test();
+	print_test();
 	parse_test();
 }
 

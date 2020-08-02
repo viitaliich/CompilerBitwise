@@ -2,8 +2,23 @@ void print_expr(Expr* expr);
 void print_stmt(Stmt* stmt);
 void print_decl(Decl* decl);
 
-int indent;
+int indent;	// ???
 
+char* print_buf;
+bool use_print_buf;
+
+// redirect to accumulation buffer. 
+#define printf(...) (use_print_buf ? (void)buf_printf(print_buf, __VA_ARGS__) : (void)printf(__VA_ARGS__))
+
+void print_flush_buf(FILE* file) {
+	if (print_buf) {
+		fprintf(file, "%s", print_buf);
+		buf_free(print_buf);
+	}
+}
+
+
+//	???
 void print_newline() {
 	printf("\n%.*s", 2 * indent, "                                                                      ");
 }
@@ -20,7 +35,7 @@ void print_typespec(Typespec* type) {
 			printf(" ");
 			print_typespec(*it);
 		}
-		printf(") ");
+		printf(" ) ");
 		print_typespec(t->func.ret);
 		printf(")");
 		break;
@@ -57,15 +72,14 @@ void print_expr(Expr* expr) {
 	case EXPR_NAME:
 		printf("%s", e->name);
 		break;
-	case EXPR_SIZEOF:
-		printf("(sizeof ");
-		if (e->sizeof_expr.kind == SIZEOF_EXPR) {
-			print_expr(e->sizeof_expr.expr);
-		}
-		else {
-			assert(e->sizeof_expr.kind == SIZEOF_TYPE);
-			print_typespec(e->sizeof_expr.type);
-		}
+	case EXPR_SIZEOF_EXPR:
+		printf("(sizeof-expr ");
+		print_expr(e->sizeof_expr);
+		printf(")");
+		break;
+	case EXPR_SIZEOF_TYPE:
+		printf("(sizeof-type ");
+		print_typespec(e->sizeof_type);
 		printf(")");
 		break;
 	case EXPR_CAST:
@@ -111,12 +125,12 @@ void print_expr(Expr* expr) {
 		printf(")");
 		break;
 	case EXPR_UNARY:
-		printf("(%s ", temp_token_kind_str(e->unary.op));
+		printf("(%s ", token_kind_name(e->unary.op));
 		print_expr(e->unary.expr);
 		printf(")");
 		break;
 	case EXPR_BINARY:
-		printf("(%s ", temp_token_kind_str(e->binary.op));
+		printf("(%s ", token_kind_name(e->binary.op));
 		print_expr(e->binary.left);
 		printf(" ");
 		print_expr(e->binary.right);
@@ -151,6 +165,9 @@ void print_stmt_block(StmtBlock block) {
 void print_stmt(Stmt* stmt) {
 	Stmt* s = stmt;
 	switch (s->kind) {
+	case STMT_DECL:
+		print_decl(s->decl);
+		break;
 	case STMT_RETURN:
 		printf("(return ");
 		print_expr(s->return_stmt.expr);
@@ -354,7 +371,9 @@ void print_decl(Decl* decl) {
 	}
 }
 
-void print_test() {
+void print_test() {		// like ast_test()
+	use_print_buf = true;
+
 	// Expressions
 	Expr* exprs[] = {
 		expr_binary('+', expr_int(1), expr_int(2)),
@@ -456,4 +475,8 @@ stmt_return(expr_int(0))
 		print_stmt(*it);
 		printf("\n");
 	}
+	print_flush_buf(stdout);
+	use_print_buf = false;
 }
+
+#undef printf
