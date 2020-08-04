@@ -117,7 +117,7 @@ char* buf__printf(char* buf, const char* fmt, ...) {
 	if (buf_len(buf) == 0) {
 		n++;
 	}
-	buf_fit(buf, n + buf_len(buf));
+	buf__fit(buf, n + buf_len(buf));
 	char* dest = buf_len(buf) == 0 ? buf : buf + buf_len(buf) - 1;
 	va_start(args, fmt);
 	vsnprintf(dest, buf + buf_cap(buf) - dest, fmt, args);
@@ -129,7 +129,7 @@ char* buf__printf(char* buf, const char* fmt, ...) {
 void buf_test() {
 	char* ch = NULL;
 	buf_push(ch, 'a');
-	printf("%c\n", ch[0]);
+	//printf("%c\n", ch[0]);
 	
 	int* buf = NULL;		
 	assert(buf_len(buf) == 0);
