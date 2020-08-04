@@ -1,5 +1,3 @@
-// Please don't file bugs for this code yet. It's just a scratchpad for now.
-
 typedef enum TypeKind {
 	TYPE_INT,
 	TYPE_FLOAT,
@@ -13,27 +11,26 @@ typedef enum TypeKind {
 typedef struct Type Type;		// not like a typespec in a syntactic sence, but an actual semantic type.
 
 typedef struct TypeField {
-	const char* name;
+	const char* name;			// why is it name here ???		why is it here?
 	Type* type;
 } TypeField;
 
-//	???
 struct Type {
 	TypeKind kind;
 	union {
 		struct {
-			Type* base;
+			Type* base;			// why is it pointer here?
 		} ptr;
 		struct {
 			Type* base;
 			size_t size;
 		} array;
 		struct {
-			TypeField* fields;
+			TypeField* fields;		// buffer but not buffer		// It could be Type** fields;		why we need 'name' ?
 			size_t num_fields;
 		} aggregate;
 		struct {
-			Type** params;
+			Type** params;		// buffer but not buffer
 			size_t num_params;
 			Type* ret;
 		} func;
@@ -46,20 +43,26 @@ Type* type_alloc(TypeKind kind) {
 	return t;
 }
 
-// ???
+#if 0
+Type* t_int(TypeKind kind) {
+	Type* t = type_alloc(kind);
+	t->kind = kind;
+	return t;
+}
+#endif
+
 Type type_int_val = { TYPE_INT };
 Type type_float_val = { TYPE_FLOAT };
 
 Type* type_int = &type_int_val;
 Type* type_float = &type_float_val;
 
-// ???
 typedef struct CachedPtrType {
-	Type* base;
+	Type* base;		// there is for convenience (for not this 'it->ptr->ptr.base == base' in a few lines below)
 	Type* ptr;
 } CachedPtrType;
 
-CachedPtrType* cached_ptr_types;
+CachedPtrType* cached_ptr_types;		// buf
 
 Type* type_ptr(Type* base) {
 	for (CachedPtrType* it = cached_ptr_types; it != buf_end(cached_ptr_types); it++) {
@@ -151,6 +154,7 @@ typedef struct ConstEntity {
 	};
 } ConstEntity;
 
+// ???
 typedef struct Entity {
 	int foo;
 } Entity;
@@ -227,7 +231,7 @@ void resolve_test() {
 	Decl* decl = decl_const(foo, expr_int(42));
 	sym_put(decl);
 	Sym* sym = sym_get(foo);
-	assert(sym && sym->decl == decl);
+	assert(sym && sym->decl == decl);		// ???
 
 	Type* int_ptr = type_ptr(type_int);
 	assert(type_ptr(type_int) == int_ptr);
@@ -250,13 +254,13 @@ void resolve_test() {
 
 // We need a way to construct some sort of representations of types in a type system. 
 // It'll also be used in code generator backend and so on.
-// In str_intern we had the same idea we take a value we interned 
+// In str_intern we had the same idea: we take a value we interned 
 // and then we expect for the same value to always get the same result back which is a canonical represent of that value. 
 // Here we can do exact thing and check poiners for equality. 
 
-// Caching her is like string interning. 
+// Caching here is like string interning. 
 // Make sure by checking the cache first that you never create a new instance of some thing that you already have and match for in the cache.
-// Structs are always resolved in a new instance.
+// Structs and unions are always resolved in a new instance.
 
 // Hash consing
 
