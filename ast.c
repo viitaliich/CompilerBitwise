@@ -50,7 +50,7 @@ Typespec* typespec_array(Typespec* elem, Expr* size) {
 	return t;
 }
 
-Typespec* typespec_func(Typespec** args, size_t num_args, Typespec* ret) {			
+Typespec* typespec_func(Typespec** args, size_t num_args, Typespec* ret) {
 	Typespec* t = typespec_new(TYPESPEC_FUNC);
 	t->func.args = AST_DUP(args);
 	t->func.num_args = num_args;
@@ -72,7 +72,7 @@ Decl* decl_enum(const char* name, EnumItem* items, size_t num_items) {
 	return d;
 }
 
-Decl* decl_aggregate(DeclKind kind, const char* name, AggregateItem* items, size_t num_items) {		// ???
+Decl* decl_aggregate(DeclKind kind, const char* name, AggregateItem* items, size_t num_items) {
 	assert(kind == DECL_STRUCT || kind == DECL_UNION);
 	Decl* d = decl_new(kind, name);
 	d->aggregate.items = AST_DUP(items);
@@ -80,7 +80,7 @@ Decl* decl_aggregate(DeclKind kind, const char* name, AggregateItem* items, size
 	return d;
 }
 
-Decl* decl_union(const char* name, AggregateItem* items, size_t num_items) {	// ???
+Decl* decl_union(const char* name, AggregateItem* items, size_t num_items) {
 	Decl* d = decl_new(DECL_UNION, name);
 	d->aggregate.items = AST_DUP(items);
 	d->aggregate.num_items = num_items;
@@ -115,7 +115,6 @@ Decl* decl_typedef(const char* name, Typespec* type) {
 	return d;
 }
 
-
 Expr* expr_new(ExprKind kind) {
 	Expr* e = ast_alloc(sizeof(Expr));
 	e->kind = kind;
@@ -133,7 +132,6 @@ Expr* expr_sizeof_type(Typespec* type) {
 	e->sizeof_type = type;
 	return e;
 }
-
 
 Expr* expr_int(int64_t int_val) {
 	Expr* e = expr_new(EXPR_INT);
@@ -237,11 +235,11 @@ Stmt* stmt_return(Expr* expr) {
 	return s;
 }
 
-Stmt* stmt_break() {
+Stmt* stmt_break(void) {
 	return stmt_new(STMT_BREAK);
 }
 
-Stmt* stmt_continue() {
+Stmt* stmt_continue(void) {
 	return stmt_new(STMT_CONTINUE);
 }
 
@@ -314,6 +312,7 @@ Stmt* stmt_expr(Expr* expr) {
 }
 
 #undef AST_DUP
+
 
 // Linked lists are very good for parsers
 

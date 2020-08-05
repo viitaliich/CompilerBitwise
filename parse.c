@@ -1,10 +1,10 @@
-Decl* parse_decl_opt(); 
+Decl* parse_decl_opt();
 Decl* parse_decl();
 Typespec* parse_type();
 Stmt* parse_stmt();
 Expr* parse_expr();
 
-Typespec* parse_type_func() {
+Typespec* parse_type_func(void) {
 	Typespec** args = NULL;
 	expect_token(TOKEN_LPAREN);
 	if (!is_token(TOKEN_RPAREN)) {
@@ -21,7 +21,7 @@ Typespec* parse_type_func() {
 	return typespec_func(args, buf_len(args), ret);
 }
 
-Typespec* parse_type_base() {
+Typespec* parse_type_base(void) {
 	if (is_token(TOKEN_NAME)) {
 		const char* name = token.name;
 		next_token();
@@ -41,10 +41,10 @@ Typespec* parse_type_base() {
 	}
 }
 
-Typespec* parse_type() {
+Typespec* parse_type(void) {
 	Typespec* type = parse_type_base();
 	while (is_token(TOKEN_LBRACKET) || is_token(TOKEN_MUL)) {
-		if (match_token(TOKEN_RBRACKET)) {
+		if (match_token(TOKEN_LBRACKET)) {
 			Expr* expr = NULL;
 			if (!is_token(TOKEN_RBRACKET)) {
 				expr = parse_expr();
@@ -74,7 +74,7 @@ Expr* parse_expr_compound(Typespec* type) {
 	return expr_compound(type, args, buf_len(args));
 }
 
-Expr* parse_expr_operand() {
+Expr* parse_expr_operand(void) {
 	if (is_token(TOKEN_INT)) {
 		int64_t val = token.int_val;
 		next_token();
@@ -134,7 +134,7 @@ Expr* parse_expr_operand() {
 	}
 }
 
-Expr* parse_expr_base() {
+Expr* parse_expr_base(void) {
 	Expr* expr = parse_expr_operand();
 	while (is_token(TOKEN_LPAREN) || is_token(TOKEN_LBRACKET) || is_token(TOKEN_DOT)) {
 		if (match_token(TOKEN_LPAREN)) {
@@ -164,11 +164,11 @@ Expr* parse_expr_base() {
 	return expr;
 }
 
-bool is_unary_op() {
+bool is_unary_op(void) {
 	return is_token(TOKEN_ADD) || is_token(TOKEN_SUB) || is_token(TOKEN_MUL) || is_token(TOKEN_AND);
 }
 
-Expr* parse_expr_unary() {
+Expr* parse_expr_unary(void) {
 	if (is_unary_op()) {
 		TokenKind op = token.kind;
 		next_token();
@@ -179,11 +179,11 @@ Expr* parse_expr_unary() {
 	}
 }
 
-bool is_mul_op() {
+bool is_mul_op(void) {
 	return TOKEN_FIRST_MUL <= token.kind && token.kind <= TOKEN_LAST_MUL;
 }
 
-Expr* parse_expr_mul() {
+Expr* parse_expr_mul(void) {
 	Expr* expr = parse_expr_unary();
 	while (is_mul_op()) {
 		TokenKind op = token.kind;
@@ -193,11 +193,11 @@ Expr* parse_expr_mul() {
 	return expr;
 }
 
-bool is_add_op() {
+bool is_add_op(void) {
 	return TOKEN_FIRST_ADD <= token.kind && token.kind <= TOKEN_LAST_ADD;
 }
 
-Expr* parse_expr_add() {
+Expr* parse_expr_add(void) {
 	Expr* expr = parse_expr_mul();
 	while (is_add_op()) {
 		TokenKind op = token.kind;
@@ -207,11 +207,11 @@ Expr* parse_expr_add() {
 	return expr;
 }
 
-bool is_cmp_op() {
+bool is_cmp_op(void) {
 	return TOKEN_FIRST_CMP <= token.kind && token.kind <= TOKEN_LAST_CMP;
 }
 
-Expr* parse_expr_cmp() {
+Expr* parse_expr_cmp(void) {
 	Expr* expr = parse_expr_add();
 	while (is_cmp_op()) {
 		TokenKind op = token.kind;
@@ -221,7 +221,7 @@ Expr* parse_expr_cmp() {
 	return expr;
 }
 
-Expr* parse_expr_and() {
+Expr* parse_expr_and(void) {
 	Expr* expr = parse_expr_cmp();
 	while (match_token(TOKEN_AND_AND)) {
 		expr = expr_binary(TOKEN_AND_AND, expr, parse_expr_cmp());
@@ -229,7 +229,7 @@ Expr* parse_expr_and() {
 	return expr;
 }
 
-Expr* parse_expr_or() {
+Expr* parse_expr_or(void) {
 	Expr* expr = parse_expr_and();
 	while (match_token(TOKEN_OR_OR)) {
 		expr = expr_binary(TOKEN_OR_OR, expr, parse_expr_and());
@@ -237,7 +237,7 @@ Expr* parse_expr_or() {
 	return expr;
 }
 
-Expr* parse_expr_ternary() {
+Expr* parse_expr_ternary(void) {
 	Expr* expr = parse_expr_or();
 	if (match_token(TOKEN_QUESTION)) {
 		Expr* then_expr = parse_expr_ternary();
@@ -248,18 +248,18 @@ Expr* parse_expr_ternary() {
 	return expr;
 }
 
-Expr* parse_expr() {
+Expr* parse_expr(void) {
 	return parse_expr_ternary();
 }
 
-Expr* parse_paren_expr() {
+Expr* parse_paren_expr(void) {
 	expect_token(TOKEN_LPAREN);
 	Expr* expr = parse_expr();
 	expect_token(TOKEN_RPAREN);
 	return expr;
 }
 
-StmtList parse_stmt_block() {
+StmtList parse_stmt_block(void) {
 	expect_token(TOKEN_LBRACE);
 	Stmt** stmts = NULL;
 	while (!is_token_eof() && !is_token(TOKEN_RBRACE)) {
@@ -269,7 +269,7 @@ StmtList parse_stmt_block() {
 	return stmt_list(stmts, buf_len(stmts));
 }
 
-Stmt* parse_stmt_if() {
+Stmt* parse_stmt_if(void) {
 	Expr* cond = parse_paren_expr();
 	StmtList then_block = parse_stmt_block();
 	StmtList else_block = { 0 };
@@ -286,12 +286,12 @@ Stmt* parse_stmt_if() {
 	return stmt_if(cond, then_block, elseifs, buf_len(elseifs), else_block);
 }
 
-Stmt* parse_stmt_while() {
+Stmt* parse_stmt_while(void) {
 	Expr* cond = parse_paren_expr();
 	return stmt_while(cond, parse_stmt_block());
 }
 
-Stmt* parse_stmt_do_while() {
+Stmt* parse_stmt_do_while(void) {
 	StmtList block = parse_stmt_block();
 	if (!match_keyword(while_keyword)) {
 		fatal_syntax_error("Expected 'while' after 'do' block");
@@ -302,11 +302,11 @@ Stmt* parse_stmt_do_while() {
 	return stmt;
 }
 
-bool is_assign_op() {
+bool is_assign_op(void) {
 	return TOKEN_FIRST_ASSIGN <= token.kind && token.kind <= TOKEN_LAST_ASSIGN;
 }
 
-Stmt* parse_simple_stmt() {
+Stmt* parse_simple_stmt(void) {
 	Expr* expr = parse_expr();
 	Stmt* stmt;
 	if (match_token(TOKEN_COLON_ASSIGN)) {
@@ -332,7 +332,7 @@ Stmt* parse_simple_stmt() {
 	return stmt;
 }
 
-Stmt* parse_stmt_for() {
+Stmt* parse_stmt_for(void) {
 	expect_token(TOKEN_LPAREN);
 	Stmt* init = NULL;
 	if (!is_token(TOKEN_SEMICOLON)) {
@@ -355,7 +355,7 @@ Stmt* parse_stmt_for() {
 	return stmt_for(init, cond, next, parse_stmt_block());
 }
 
-SwitchCase parse_stmt_switch_case() {
+SwitchCase parse_stmt_switch_case(void) {
 	Expr** exprs = NULL;
 	bool is_default = false;
 	while (is_keyword(case_keyword) || is_keyword(default_keyword)) {
@@ -376,11 +376,10 @@ SwitchCase parse_stmt_switch_case() {
 	while (!is_token_eof() && !is_token(TOKEN_RBRACE) && !is_keyword(case_keyword) && !is_keyword(default_keyword)) {
 		buf_push(stmts, parse_stmt());
 	}
-	StmtList block = stmt_list(stmts, buf_len(stmts));
-	return (SwitchCase) { exprs, buf_len(exprs), is_default, block };
+	return (SwitchCase) { exprs, buf_len(exprs), is_default, stmt_list(stmts, buf_len(stmts)) };
 }
 
-Stmt* parse_stmt_switch() {
+Stmt* parse_stmt_switch(void) {
 	Expr* expr = parse_paren_expr();
 	SwitchCase* cases = NULL;
 	expect_token(TOKEN_LBRACE);
@@ -391,7 +390,7 @@ Stmt* parse_stmt_switch() {
 	return stmt_switch(expr, cases, buf_len(cases));
 }
 
-Stmt* parse_stmt() {
+Stmt* parse_stmt(void) {
 	if (match_keyword(if_keyword)) {
 		return parse_stmt_if();
 	}
@@ -410,7 +409,6 @@ Stmt* parse_stmt() {
 	else if (is_token(TOKEN_LBRACE)) {
 		return stmt_block(parse_stmt_block());
 	}
-	
 	else if (match_keyword(break_keyword)) {
 		expect_token(TOKEN_SEMICOLON);
 		return stmt_break();
@@ -418,7 +416,6 @@ Stmt* parse_stmt() {
 	else if (match_keyword(continue_keyword)) {
 		expect_token(TOKEN_SEMICOLON);
 		return stmt_continue();
-
 	}
 	else if (match_keyword(return_keyword)) {
 		Expr* expr = NULL;
@@ -439,13 +436,13 @@ Stmt* parse_stmt() {
 	}
 }
 
-const char* parse_name() {
+const char* parse_name(void) {
 	const char* name = token.name;
 	expect_token(TOKEN_NAME);
 	return name;
 }
 
-EnumItem parse_decl_enum_item() {
+EnumItem parse_decl_enum_item(void) {
 	const char* name = parse_name();
 	Expr* init = NULL;
 	if (match_token(TOKEN_ASSIGN)) {
@@ -454,13 +451,13 @@ EnumItem parse_decl_enum_item() {
 	return (EnumItem) { name, init };
 }
 
-Decl* parse_decl_enum() {
+Decl* parse_decl_enum(void) {
 	const char* name = parse_name();
 	expect_token(TOKEN_LBRACE);
 	EnumItem* items = NULL;
 	if (!is_token(TOKEN_RBRACE)) {
 		buf_push(items, parse_decl_enum_item());
-		while (match_token(',')) {
+		while (match_token(TOKEN_COMMA)) {
 			buf_push(items, parse_decl_enum_item());
 		}
 	}
@@ -468,10 +465,10 @@ Decl* parse_decl_enum() {
 	return decl_enum(name, items, buf_len(items));
 }
 
-AggregateItem parse_decl_aggregate_item() {
+AggregateItem parse_decl_aggregate_item(void) {
 	const char** names = NULL;
 	buf_push(names, parse_name());
-	while (match_token(',')) {
+	while (match_token(TOKEN_COMMA)) {
 		buf_push(names, parse_name());
 	}
 	expect_token(TOKEN_COLON);
@@ -492,7 +489,7 @@ Decl* parse_decl_aggregate(DeclKind kind) {
 	return decl_aggregate(kind, name, items, buf_len(items));
 }
 
-Decl* parse_decl_var() {
+Decl* parse_decl_var(void) {
 	const char* name = parse_name();
 	if (match_token(TOKEN_ASSIGN)) {
 		return decl_var(name, NULL, parse_expr());
@@ -511,32 +508,32 @@ Decl* parse_decl_var() {
 	}
 }
 
-Decl* parse_decl_const() {
+Decl* parse_decl_const(void) {
 	const char* name = parse_name();
 	expect_token(TOKEN_ASSIGN);
 	return decl_const(name, parse_expr());
 }
 
-Decl* parse_decl_typedef() {
+Decl* parse_decl_typedef(void) {
 	const char* name = parse_name();
 	expect_token(TOKEN_ASSIGN);
 	return decl_typedef(name, parse_type());
 }
 
-FuncParam parse_decl_func_param() {
+FuncParam parse_decl_func_param(void) {
 	const char* name = parse_name();
 	expect_token(TOKEN_COLON);
 	Typespec* type = parse_type();
 	return (FuncParam) { name, type };
 }
 
-Decl* parse_decl_func() {
+Decl* parse_decl_func(void) {
 	const char* name = parse_name();
 	expect_token(TOKEN_LPAREN);
 	FuncParam* params = NULL;
 	if (!is_token(TOKEN_RPAREN)) {
 		buf_push(params, parse_decl_func_param());
-		while (match_token(',')) {
+		while (match_token(TOKEN_COMMA)) {
 			buf_push(params, parse_decl_func_param());
 		}
 	}
@@ -549,7 +546,7 @@ Decl* parse_decl_func() {
 	return decl_func(name, params, buf_len(params), ret_type, block);
 }
 
-Decl* parse_decl_opt() {
+Decl* parse_decl_opt(void) {
 	if (match_keyword(enum_keyword)) {
 		return parse_decl_enum();
 	}
@@ -576,7 +573,7 @@ Decl* parse_decl_opt() {
 	}
 }
 
-Decl* parse_decl() {
+Decl* parse_decl(void) {
 	Decl* decl = parse_decl_opt();
 	if (!decl) {
 		fatal_syntax_error("Expected declaration keyword, got %s", token_info());
@@ -584,7 +581,7 @@ Decl* parse_decl() {
 	return decl;
 }
 
-void parse_test() {
+void parse_test(void) {
 	const char* decls[] = {
 		"const n = sizeof(:int*[16])",
 		"const n = sizeof(1+2)",
@@ -592,7 +589,7 @@ void parse_test() {
 		"func fact(n: int): int { trace(\"fact\"); if (n == 0) { return 1; } else { return n * fact(n-1); } }",
 		"func fact(n: int): int { p := 1; for (i := 1; i <= n; i++) { p *= i; } return p; }",
 		"var foo = a ? a&b + c<<d + e*f == +u-v-w + *g/h(x,y) + -i%k[x] && m <= n*(p+q)/r : 0",
-		"func f(x: int): bool { switch(x) { case 0: case 1: return true; case 2: default: return false; } }",
+		"func f(x: int): bool { switch (x) { case 0: case 1: return true; case 2: default: return false; } }",
 		"enum Color { RED = 3, GREEN, BLUE = 0 }",
 		"const pi = 3.14",
 		"struct Vector { x, y: float; }",
@@ -600,10 +597,10 @@ void parse_test() {
 		"var v: Vector = {1.0, -1.0}",
 		"union IntOrFloat { i: int; f: float; }",
 		"typedef Vectors = Vector[1+2]",
-		"func f() { do { print(42); } while(1); }",
+		"func f(void) { do { print(42); } while(1); }",
 		"typedef T = (func(int):int)[16]",
-		"func f() { enum E { A, B, C } return 42; }",
-		"func f() { if (1) { return 1; } else if (2) { return 2; } else { return 3; } }",
+		"func f(void) { enum E { A, B, C } return; }",
+		"func f(void) { if (1) { return 1; } else if (2) { return 2; } else { return 3; } }",
 	};
 	for (const char** it = decls; it != decls + sizeof(decls) / sizeof(*decls); it++) {
 		init_stream(*it);

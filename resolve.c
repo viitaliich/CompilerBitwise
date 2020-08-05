@@ -160,22 +160,21 @@ typedef struct Entity {
 } Entity;
 
 typedef enum SymState {
-	SYM_UNRESOLVED,
-	SYM_RESOLVING,
-	SYM_RESOLVED,
+	SYM_UNORDERED,
+	SYM_ORDERING, 
+	SYM_ORDERED,
 } SymState;
 
 typedef struct Sym {		
 	const char* name;		// declaration has a name...
 	Decl* decl;				// ... what is this name for ? This is for future hash-table
 	SymState state;
-	Entity* ent;		// ???
 } Sym;
 
-Sym* syms;		// symbol table
+Sym* global_syms;		// symbol table
 
 Sym* sym_get(const char* name) {
-	for (Sym* it = syms; it != buf_end(syms); it++) {
+	for (Sym* it = global_syms; it != buf_end(global_syms); it++) {
 		if (it->name == name) {
 			return it;
 		}
@@ -183,53 +182,168 @@ Sym* sym_get(const char* name) {
 	return NULL;
 }
 
-void sym_put(Decl* decl) {
-	assert(decl->name);
-	assert(!sym_get(decl->name));
-	buf_push(syms, (Sym) { decl->name, decl, SYM_UNRESOLVED });		// SYM_UNRESOLVED	???
+void sym_builtin(const char* name) {
+	buf_push(global_syms, (Sym) { name, NULL, SYM_ORDERED });
 }
 
-//	???		coming soon ...
-void resolve_decl(Decl* decl) {
-	switch (decl->kind) {
-	case DECL_CONST:
+void sym_decl(Decl* decl) {
+	assert(decl->name);
+	// good check on the same variable declarations (int a = 5, float a = 3.0)
+	assert(!sym_get(decl->name));		// assert will terminate the program if its argument turns out to be false
+	buf_push(global_syms, (Sym) { decl->name, decl, SYM_UNORDERED });		
+}
+
+// Kind of a graph walk.
+// We are not trying produce any complicated result as we walk,
+// but walking in the graph and trying to detect cycles. 
+// There is flag assosiated with names of the symbol table that tell us
+// whether we've already ordered (or tryed to do so) smth or we are in a middle of ordering.
+
+Decl** ordered_decls = NULL;
+
+void order_decl(Decl* decl);
+void order_typespec(Decl* types);
+
+void order_name(const char* name) {
+	Sym* sym = sym_get(name);
+	if (!sym) {
+		fatal("Non-existent name '%s'", name);
+		return;
+	}
+	if (sym->state == SYM_ORDERED) {
+		return;
+	}
+	if (sym->state == SYM_ORDERING) {
+		fatal("Cyclic dependency");
+		return;
+	}
+	sym->state = SYM_ORDERING;
+	order_decl(sym->decl);
+	sym->state = SYM_ORDERED;
+	buf_push(ordered_decls, sym->decl);		// once we ordered smth, we have to put it in a list
+}
+
+void order_expr(Expr* expr) {
+	switch (expr->kind) {
+	case EXPR_INT:
+	case EXPR_FLOAT:
+	case EXPR_STR:
+		// do nothing
+		break;
+	case EXPR_NAME:
+		order_name(expr->name);
+		break;
+	case EXPR_CAST:
+		order_typespec(expr->cast.type);
+		order_expr(expr->cast.expr);
+		break;
+	case EXPR_CALL:
+		order_expr(expr->call.expr);
+		for (size_t i = 0; i < expr->call.num_args; i++) {
+			order_expr(expr->call.args[i]);
+		}
+		break;
+	case EXPR_INDEX:
+		order_expr(expr->index.expr);
+		order_expr(expr->index.index);
+		break;
+	case EXPR_FIELD:
+		order_expr(expr->field.expr);
+		break;
+	case EXPR_COMPOUND:
+		if (expr->compound.type) {
+			order_typespec(expr->compound.type);
+		}
+		for (size_t i = 0; i < expr->compound.num_args; i++) {
+			order_expr(expr->compound.args[i]);
+		}
+		break;
+	case EXPR_UNARY:
+		order_expr(expr->unary.expr);
+		break;
+	case EXPR_BINARY:
+		order_expr(expr->binary.left);
+		order_expr(expr->binary.right);
+		break;
+	case EXPR_TERNARY:
+		order_expr(expr->ternary.cond);
+		order_expr(expr->ternary.then_expr);
+		order_expr(expr->ternary.else_expr);
+		break;
+	case EXPR_SIZEOF_EXPR:
+		order_expr(expr->sizeof_expr);
+		break;
+	case EXPR_SIZEOF_TYPE:
+		order_typespec(expr->sizeof_type);
+		break;
+	default:
+		assert(0);
 		break;
 	}
 }
 
-void resolve_sym(Sym* sym) {
-	if (sym->state == SYM_RESOLVED) {
-		return;
-	}
-	if (sym->state == SYM_RESOLVING) {
-		fatal("Cyclic dependency");
-		return;
-	}
-	resolve_decl(sym->decl);
-}
-
-//	???
-Sym* resolve_name(const char* name) {
-	Sym* sym = sym_get(name);
-	if (!sym) {
-		fatal("Unknown name");
-		return NULL;
-	}
-	resolve_sym(sym);
-	return sym;
-}
-
-void resolve_syms() {
-	for (Sym* it = syms; it != buf_end(syms); it++) {
-		resolve_sym(it);
+void order_typespec(Typespec* typespec) {
+	switch (typespec->kind) {
+	case TYPESPEC_NAME:
+		order_name(typespec->name);
+		break;
+	case TYPESPEC_FUNC:
+		for (size_t i = 0; i < typespec->func.num_args; i++) {
+			order_typespec(typespec->func.args[i]);
+		}
+		order_typespec(typespec->func.ret);
+		break;
+	case TYPESPEC_ARRAY:
+		order_typespec(typespec->array.elem);
+		order_expr(typespec->array.size);
+		break;
+	case TYPESPEC_PTR:
+		// TODO: Think about forward declaration, etc
+		break;
+	default:
+		assert(0);
+		break;
 	}
 }
 
-void resolve_test() {
+void order_decl(Decl* decl) {
+	switch (decl->kind) {
+	case DECL_STRUCT:
+	case DECL_UNION:
+		for (size_t i = 0; i < decl->aggregate.num_items; i++) {
+			order_typespec(decl->aggregate.items[i].type);
+		}
+		break;		
+	case DECL_VAR:
+		order_typespec(decl->var.type);		
+		order_expr(decl->var.expr);
+		break;
+	case DECL_CONST:
+		order_expr(decl->const_decl.expr);
+		break;
+	case DECL_TYPEDEF:
+		order_typespec(decl->typedef_decl.type);
+		break;
+	case DECL_FUNC:
+		// Don't need handle here
+		break;
+	default:
+		assert(0);
+		break;
+	}
+}
+
+void order_decls(void) {
+	for (size_t i = 0; i < buf_len(global_syms); i++) {
+		order_name(global_syms[i].name);
+	}
+}
+
+void resolve_test(void) {
 	const char* foo = str_intern("foo");
 	assert(sym_get(foo) == NULL);
 	Decl* decl = decl_const(foo, expr_int(42));
-	sym_put(decl);
+	sym_decl(decl);
 	Sym* sym = sym_get(foo);
 	assert(sym && sym->decl == decl);		// ???
 
@@ -250,6 +364,31 @@ void resolve_test() {
 	Type* int_func = type_func(NULL, 0, type_int);
 	assert(int_int_func != int_func);
 	assert(int_func == type_func(NULL, 0, type_int));
+}
+
+void order_test(void) {
+	const char* code_decls[] = {
+		"const a = b",
+		"const b = 1",
+
+		//"struct S { t: T; }",
+		//"struct T { i: int; }",
+
+		//"struct E { f: F; }",
+		//"struct F { i: int[n]; }",
+		//"const n = 1024;"
+	};
+	sym_builtin(str_intern("int"));		// ???		why?
+	for (size_t i = 0; i < sizeof(code_decls) / sizeof(*code_decls); i++) {
+		init_stream(code_decls[i]);		// init_stream = token analisys		// how does it work ???
+		Decl* decl = parse_decl();
+		sym_decl(decl);
+	}
+	
+	order_decls();
+	for (size_t i = 0; i < buf_len(ordered_decls); i++) {
+		printf("%s\n", ordered_decls[i]->name);
+	}
 }
 
 // We need a way to construct some sort of representations of types in a type system. 

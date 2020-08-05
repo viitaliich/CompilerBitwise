@@ -5,6 +5,15 @@
 #define ALIGN_DOWN_PTR(p, a) ((void *)ALIGN_DOWN((uintptr_t)(p), (a)))	// uintptr_t - 
 #define ALIGN_UP_PTR(p, a) ((void *)ALIGN_UP((uintptr_t)(p), (a)))		// manipulate it as a usual integer number, then cast back
 
+void* xcalloc(size_t num_elems, size_t elem_size) {
+	void* ptr = calloc(num_elems, elem_size);
+	if (!ptr) {
+		perror("xcalloc failed");
+		exit(1);
+	}
+	return ptr;
+}
+
 void* xrealloc(void* ptr, size_t num_bytes) {
 	ptr = realloc(ptr, num_bytes);
 	if (!ptr) {
@@ -18,15 +27,6 @@ void* xmalloc(size_t num_bytes) {
 	void* ptr = malloc(num_bytes);
 	if (!ptr) {
 		perror("xmalloc failed");
-		exit(1);
-	}
-	return ptr;
-}
-
-void* xcalloc(size_t num_items, size_t item_size) {
-	void* ptr = calloc(num_items, item_size);
-	if (!ptr) {
-		perror("xcalloc failed");
 		exit(1);
 	}
 	return ptr;
@@ -51,7 +51,7 @@ void fatal(const char* fmt, ...) {
 void syntax_error(const char* fmt, ...) {
 	va_list args;
 	va_start(args, fmt);
-	printf("Syntax error: ");
+	printf("Syntax Error: ");
 	vprintf(fmt, args);
 	printf("\n");
 	va_end(args);
@@ -95,9 +95,9 @@ typedef struct BufHdr {		//Buf header
 // rare case when use it, so it will not polute the cashe. 
 void* buf__grow(const void* buf, size_t new_len, size_t elem_size) {
 	assert(buf_cap(buf) <= (SIZE_MAX - 1) / 2);
-	size_t new_cap = MAX(16, MAX(1 + 2 * buf_cap(buf), new_len));		// why 16?
+	size_t new_cap = MAX(16, MAX(1 + 2 * buf_cap(buf), new_len));
 	assert(new_len <= new_cap);
-	assert(new_cap <= (SIZE_MAX - offsetof(BufHdr, buf)) / elem_size);	
+	assert(new_cap <= (SIZE_MAX - offsetof(BufHdr, buf)) / elem_size);
 	size_t new_size = offsetof(BufHdr, buf) + new_cap * elem_size;
 	BufHdr* new_hdr;
 	if (buf) {
@@ -121,25 +121,20 @@ char* buf__printf(char* buf, const char* fmt, ...) {
 	size_t n = 1 + vsnprintf(buf_end(buf), cap, fmt, args);
 	va_end(args);
 	if (n > cap) {
-		buf_fit(buf, n + buf_len(buf));
+		buf__fit(buf, n + buf_len(buf));
 		va_start(args, fmt);
-		cap = buf_cap(buf) - buf_len(buf);
-		n = 1 + vsnprintf(buf_end(buf), cap, fmt, args);
-		assert(n <= cap);
+		size_t new_cap = buf_cap(buf) - buf_len(buf);
+		n = 1 + vsnprintf(buf_end(buf), new_cap, fmt, args);
+		assert(n <= new_cap);
 		va_end(args);
 	}
 	buf__hdr(buf)->len += n - 1;
 	return buf;
 }
 
-void buf_test() {
-	char* ch = NULL;
-	buf_push(ch, 'a');
-	//printf("%c\n", ch[0]);
-	
-	int* buf = NULL;		
+void buf_test(void) {
+	int* buf = NULL;
 	assert(buf_len(buf) == 0);
-	
 	int n = 1024;
 	for (int i = 0; i < n; i++) {
 		buf_push(buf, i);
@@ -148,17 +143,14 @@ void buf_test() {
 	for (int i = 0; i < buf_len(buf); i++) {
 		assert(buf[i] == i);
 	}
-	
 	buf_free(buf);
 	assert(buf == NULL);
 	assert(buf_len(buf) == 0);
-
 	char* str = NULL;
 	buf_printf(str, "One: %d\n", 1);
 	assert(strcmp(str, "One: 1\n") == 0);
 	buf_printf(str, "Hex: 0x%x\n", 0x12345678);
 	assert(strcmp(str, "One: 1\nHex: 0x12345678\n") == 0);
-	
 }
 
 // Arena allocator
@@ -195,7 +187,7 @@ void* arena_alloc(Arena* arena, size_t size) {
 }
 
 void arena_free(Arena* arena) {
-	for (int8_t** it = arena->blocks; it != buf_end(arena->blocks); it++) {
+	for (char** it = arena->blocks; it != buf_end(arena->blocks); it++) {
 		free(*it);
 	}
 	buf_free(arena->blocks);	// fix not freeing arena block array		???
@@ -230,8 +222,8 @@ const char* str_intern(const char* str) {
 	return str_intern_range(str, str + strlen(str));
 }
 
-void intern_test() {
-	char a[] = "hello";		// why not char* ?
+void intern_test(void) {
+	char a[] = "hello";
 	assert(strcmp(a, str_intern(a)) == 0);
 	assert(str_intern(a) == str_intern(a));
 	assert(str_intern(str_intern(a)) == str_intern(a));
@@ -244,7 +236,7 @@ void intern_test() {
 	assert(str_intern(a) != str_intern(d));
 }
 
-void common_test() {
+void common_test(void) {
 	buf_test();
 	intern_test();
 }

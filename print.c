@@ -2,7 +2,7 @@ void print_expr(Expr* expr);
 void print_stmt(Stmt* stmt);
 void print_decl(Decl* decl);
 
-int indent;	// ???
+int indent;
 
 char* print_buf;
 bool use_print_buf;
@@ -10,16 +10,19 @@ bool use_print_buf;
 // redirect to accumulation buffer. 
 #define printf(...) (use_print_buf ? (void)buf_printf(print_buf, __VA_ARGS__) : (void)printf(__VA_ARGS__))
 
-void print_flush_buf(FILE* file) {
+void flush_print_buf(FILE* file) {
 	if (print_buf) {
-		fprintf(file, "%s", print_buf);
-		buf_free(print_buf);
+		if (file) {
+			fputs(print_buf, file);
+		}
+		buf_clear(print_buf);
 	}
 }
 
 
+
 //	???
-void print_newline() {
+void print_newline(void) {
 	printf("\n%.*s", 2 * indent, "                                                                      ");
 }
 
@@ -169,7 +172,7 @@ void print_stmt(Stmt* stmt) {
 		print_decl(s->decl);
 		break;
 	case STMT_RETURN:
-		printf("(return ");
+		printf("(return");
 		if (s->expr) {
 			printf(" ");
 			print_expr(s->expr);
@@ -374,13 +377,14 @@ void print_decl(Decl* decl) {
 	}
 }
 
-void print_test() {		// like ast_test()
-	use_print_buf = true;
 
+// like ast_test()
+void print_test(void) {
+	use_print_buf = true;
 	// Expressions
 	Expr* exprs[] = {
-		expr_binary('+', expr_int(1), expr_int(2)),
-		expr_unary('-', expr_float(3.14)),
+		expr_binary(TOKEN_ADD, expr_int(1), expr_int(2)),
+		expr_unary(TOKEN_SUB, expr_float(3.14)),
 		expr_ternary(expr_name("flag"), expr_str("true"), expr_str("false")),
 		expr_field(expr_name("person"), "name"),
 		expr_call(expr_name("fact"), (Expr * []) { expr_int(42) }, 1),
@@ -478,7 +482,7 @@ stmt_return(expr_int(0))
 		print_stmt(*it);
 		printf("\n");
 	}
-	print_flush_buf(stdout);
+	flush_print_buf(stdout);
 	use_print_buf = false;
 }
 
