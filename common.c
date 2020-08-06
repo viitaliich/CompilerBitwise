@@ -57,7 +57,6 @@ void syntax_error(const char* fmt, ...) {
 	va_end(args);
 }
 
-// where is it using?	???
 void fatal_syntax_error(const char* fmt, ...) {
 	va_list args;
 	va_start(args, fmt);
@@ -161,7 +160,6 @@ typedef struct Arena {
 	int8_t** blocks;	// stretchy buffer of poiters on memory blocks
 } Arena;
 
-// how to manage (choose) block sizes ???
 #define ARENA_ALIGNMENT 8	
 //#define ARENA_BLOCK_SIZE (1024 * 1024)
 #define ARENA_BLOCK_SIZE 1024
@@ -190,7 +188,7 @@ void arena_free(Arena* arena) {
 	for (char** it = arena->blocks; it != buf_end(arena->blocks); it++) {
 		free(*it);
 	}
-	buf_free(arena->blocks);	// fix not freeing arena block array		???
+	buf_free(arena->blocks);	// fix not freeing arena block array
 }
 
 // string interning
