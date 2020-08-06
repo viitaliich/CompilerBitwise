@@ -1,4 +1,5 @@
 #define MAX(x, y) ((x) >= (y) ? (x) : (y))
+#define IS_POW2(x) (((x) != 0) && ((x) & ((x)-1)) == 0)
 
 #define ALIGN_DOWN(n, a) ((n) & ~((a) - 1))				//			 n & ~(a - 1)
 #define ALIGN_UP(n, a) ALIGN_DOWN((n) + (a) - 1, (a))	// (n + a - 1) & ~(a - 1)

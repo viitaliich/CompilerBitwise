@@ -39,7 +39,12 @@ void print_typespec(Typespec* type) {
 			print_typespec(*it);
 		}
 		printf(" ) ");
-		print_typespec(t->func.ret);
+		if (t->func.ret) {
+			print_typespec(t->func.ret);
+		}
+		else {
+			printf("void");
+		}
 		printf(")");
 		break;
 	case TYPESPEC_ARRAY:
@@ -121,9 +126,22 @@ void print_expr(Expr* expr) {
 		else {
 			printf("nil");
 		}
-		for (Expr** it = e->compound.args; it != e->compound.args + e->compound.num_args; it++) {
+		for (CompoundField* it = e->compound.fields; it != e->compound.fields + e->compound.num_fields; it++) {
 			printf(" ");
-			print_expr(*it);
+			if (it->kind == FIELD_DEFAULT) {
+				printf("(nil ");
+			}
+			else if (it->kind == FIELD_NAME) {
+				printf("(name %s ", it->name);
+			}
+			else {
+				assert(it->kind == FIELD_INDEX);
+				printf("(index ");
+				print_expr(it->index);
+				printf(" ");
+			}
+			print_expr(it->init);
+			printf(")");
 		}
 		printf(")");
 		break;
@@ -395,7 +413,6 @@ void print_test(void) {
 		expr_call(expr_name("fact"), (Expr * []) { expr_int(42) }, 1),
 		expr_index(expr_field(expr_name("person"), "siblings"), expr_int(3)),
 		expr_cast(typespec_ptr(typespec_name("int")), expr_name("void_ptr")),
-		expr_compound(typespec_name("Vector"), (Expr * []) { expr_int(1), expr_int(2) }, 2),
 	};
 	for (Expr** it = exprs; it != exprs + sizeof(exprs) / sizeof(*exprs); it++) {
 		print_expr(*it);

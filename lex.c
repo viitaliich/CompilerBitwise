@@ -6,6 +6,7 @@ const char* var_keyword;
 const char* const_keyword;
 const char* func_keyword;
 const char* sizeof_keyword;
+const char* cast_keyword;
 const char* break_keyword;
 const char* continue_keyword;
 const char* return_keyword;
@@ -38,6 +39,7 @@ void init_keywords(void) {
 	KEYWORD(var);
 	KEYWORD(func);
 	KEYWORD(sizeof);
+	KEYWORD(cast);
 	KEYWORD(break);
 	KEYWORD(continue);
 	KEYWORD(return);
@@ -79,6 +81,8 @@ typedef enum TokenKind {
 	TOKEN_FLOAT,
 	TOKEN_STR,
 	TOKEN_NAME,
+	TOKEN_NEG,
+	TOKEN_NOT,
 	// Multiplicative precedence
 	TOKEN_FIRST_MUL,
 	TOKEN_MUL = TOKEN_FIRST_MUL,
@@ -552,25 +556,27 @@ repeat:								// that's not good ???
 		}
 		break;
 		CASE1('\0', TOKEN_EOF)
-			CASE1('(', TOKEN_LPAREN)
-			CASE1(')', TOKEN_RPAREN)
-			CASE1('{', TOKEN_LBRACE)
-			CASE1('}', TOKEN_RBRACE)
-			CASE1('[', TOKEN_LBRACKET)
-			CASE1(']', TOKEN_RBRACKET)
-			CASE1(',', TOKEN_COMMA)
-			CASE1('?', TOKEN_QUESTION)
-			CASE1(';', TOKEN_SEMICOLON)
-			CASE2(':', TOKEN_COLON, '=', TOKEN_COLON_ASSIGN)
-			CASE2('=', TOKEN_ASSIGN, '=', TOKEN_EQ)
-			CASE2('^', TOKEN_XOR, '=', TOKEN_XOR_ASSIGN)
-			CASE2('*', TOKEN_MUL, '=', TOKEN_MUL_ASSIGN)
-			CASE2('/', TOKEN_DIV, '=', TOKEN_DIV_ASSIGN)
-			CASE2('%', TOKEN_MOD, '=', TOKEN_MOD_ASSIGN)
-			CASE3('+', TOKEN_ADD, '=', TOKEN_ADD_ASSIGN, '+', TOKEN_INC)
-			CASE3('-', TOKEN_SUB, '=', TOKEN_SUB_ASSIGN, '-', TOKEN_DEC)
-			CASE3('&', TOKEN_AND, '=', TOKEN_AND_ASSIGN, '&', TOKEN_AND_AND)
-			CASE3('|', TOKEN_OR, '=', TOKEN_OR_ASSIGN, '|', TOKEN_OR_OR)
+		CASE1('(', TOKEN_LPAREN)
+		CASE1(')', TOKEN_RPAREN)
+		CASE1('{', TOKEN_LBRACE)
+		CASE1('}', TOKEN_RBRACE)
+		CASE1('[', TOKEN_LBRACKET)
+		CASE1(']', TOKEN_RBRACKET)
+		CASE1(',', TOKEN_COMMA)
+		CASE1('?', TOKEN_QUESTION)
+		CASE1(';', TOKEN_SEMICOLON)
+		CASE1('~', TOKEN_NEG)
+		CASE1('!', TOKEN_NOT)
+		CASE2(':', TOKEN_COLON, '=', TOKEN_COLON_ASSIGN)
+		CASE2('=', TOKEN_ASSIGN, '=', TOKEN_EQ)
+		CASE2('^', TOKEN_XOR, '=', TOKEN_XOR_ASSIGN)
+		CASE2('*', TOKEN_MUL, '=', TOKEN_MUL_ASSIGN)
+		CASE2('/', TOKEN_DIV, '=', TOKEN_DIV_ASSIGN)
+		CASE2('%', TOKEN_MOD, '=', TOKEN_MOD_ASSIGN)
+		CASE3('+', TOKEN_ADD, '=', TOKEN_ADD_ASSIGN, '+', TOKEN_INC)
+		CASE3('-', TOKEN_SUB, '=', TOKEN_SUB_ASSIGN, '-', TOKEN_DEC)
+		CASE3('&', TOKEN_AND, '=', TOKEN_AND_ASSIGN, '&', TOKEN_AND_AND)
+		CASE3('|', TOKEN_OR, '=', TOKEN_OR_ASSIGN, '|', TOKEN_OR_OR)
 	default:
 		syntax_error("Invalid '%c' token, skipping", *stream);
 		stream++;
