@@ -1,7 +1,4 @@
 ﻿  main.c
 D:\dev\CompilerBitwise\CompilerBitwise\common.c(143,20): warning C4018: <: несоответствие типов со знаком и без знака
-D:\dev\CompilerBitwise\CompilerBitwise\resolve.c(237,33): warning C4133: функция: несовместимые типы - из "Typespec *" в "Decl *"
-D:\dev\CompilerBitwise\CompilerBitwise\resolve.c(255,38): warning C4133: функция: несовместимые типы - из "Typespec *" в "Decl *"
-D:\dev\CompilerBitwise\CompilerBitwise\resolve.c(277,35): warning C4133: функция: несовместимые типы - из "Typespec *" в "Decl *"
-D:\dev\CompilerBitwise\CompilerBitwise\resolve.c(285,41): warning C4028: формальный параметр 1 отличается от объявления
+D:\dev\CompilerBitwise\CompilerBitwise\resolve.c(318,105): warning C4244: функция: преобразование "int64_t" в "size_t", возможна потеря данных
   CompilerBitwise.vcxproj -> D:\dev\CompilerBitwise\CompilerBitwise\Debug\CompilerBitwise.exe

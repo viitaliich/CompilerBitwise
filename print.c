@@ -287,10 +287,10 @@ void print_aggregate_decl(Decl* decl) {
 	for (AggregateItem* it = d->aggregate.items; it != d->aggregate.items + d->aggregate.num_items; it++) {
 		print_newline();
 		printf("(");
-		print_typespec(it->type);
 		for (const char** name = it->names; name != it->names + it->num_names; name++) {
-			printf(" %s", *name);
+			printf("%s ", *name);
 		}
+		print_typespec(it->type);
 		printf(")");
 	}
 }
@@ -338,7 +338,12 @@ void print_decl(Decl* decl) {
 			printf("nil");
 		}
 		printf(" ");
-		print_expr(d->var.expr);
+		if (d->var.expr) {
+			print_expr(d->var.expr);
+		}
+		else {
+			printf("nil");
+		}
 		printf(")");
 		break;
 	case DECL_CONST:
