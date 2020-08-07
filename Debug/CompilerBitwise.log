@@ -1,4 +1,5 @@
 ﻿  main.c
-D:\dev\CompilerBitwise\CompilerBitwise\common.c(142,20): warning C4018: <: несоответствие типов со знаком и без знака
-D:\dev\CompilerBitwise\CompilerBitwise\resolve.c(349,101): warning C4244: функция: преобразование "int64_t" в "size_t", возможна потеря данных
+D:\dev\CompilerBitwise\CompilerBitwise\common.c(143,20): warning C4018: <: несоответствие типов со знаком и без знака
+D:\dev\CompilerBitwise\CompilerBitwise\resolve.c(390,65): warning C4244: функция: преобразование "int64_t" в "size_t", возможна потеря данных
+D:\dev\CompilerBitwise\CompilerBitwise\resolve.c(877,19): warning C4244: =: преобразование "int64_t" в "size_t", возможна потеря данных
   CompilerBitwise.vcxproj -> D:\dev\CompilerBitwise\CompilerBitwise\Debug\CompilerBitwise.exe
