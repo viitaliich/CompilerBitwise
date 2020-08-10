@@ -3,6 +3,8 @@ typedef struct Stmt Stmt;
 typedef struct Decl Decl;
 typedef struct Typespec Typespec;
 
+struct Type;
+
 typedef struct StmtList {
 	Stmt** stmts;
 	size_t num_stmts;
@@ -18,6 +20,7 @@ typedef enum TypespecKind {
 
 struct Typespec {
 	TypespecKind kind;
+	struct Type* type;
 	union {
 		const char* name;
 		struct {
@@ -62,9 +65,15 @@ typedef enum DeclKind {
 	DECL_FUNC,
 } DeclKind;
 
+typedef struct DeclSet {
+	Decl** decls;
+	size_t num_decls;
+} DeclSet;
+
 struct Decl {
 	DeclKind kind;
 	const char* name;
+	struct Sym* sym;
 	union {
 		struct {
 			EnumItem* items;
@@ -128,6 +137,7 @@ typedef struct CompoundField {
 
 struct Expr {
 	ExprKind kind;
+	struct Type* type;
 	union {
 		int64_t int_val;
 		double float_val;

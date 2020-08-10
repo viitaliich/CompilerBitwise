@@ -18,6 +18,7 @@
 #include "print.c"
 #include "parse.c"
 #include "resolve.c"
+#include "gen.c"
 
 
 void main_test(void) {
@@ -25,7 +26,8 @@ void main_test(void) {
 	lex_test();
 	//print_test();
 	//parse_test();
-	resolve_test();
+	//resolve_test();
+	gen_test();
 }
 
 int main(int argc, char** argv) {

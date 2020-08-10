@@ -611,6 +611,15 @@ Decl* parse_decl(void) {
 	return decl;
 }
 
+DeclSet* parse_file(void) {
+	Decl** decls = NULL;
+	while (!is_token(TOKEN_EOF)) {
+		buf_push(decls, parse_decl());
+	}
+	return decl_set(decls, buf_len(decls));
+}
+
+
 void parse_test(void) {
 	const char* decls[] = {
 		"var x: char[256] = {1, 2, 3, ['a'] = 4}",
