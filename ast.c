@@ -27,6 +27,7 @@ StmtList stmt_list(Stmt** stmts, size_t num_stmts) {
 
 Typespec* typespec_new(TypespecKind kind) {
 	Typespec* t = ast_alloc(sizeof(Typespec));
+	t->loc = (SrcLoc){ src_name, src_line };
 	t->kind = kind;
 	return t;
 }
@@ -35,6 +36,7 @@ Typespec* typespec_name(const char* name) {
 	Typespec* t = typespec_new(TYPESPEC_NAME);
 	t->name = name;
 	return t;
+
 }
 
 Typespec* typespec_ptr(Typespec* elem) {
@@ -67,6 +69,7 @@ DeclSet* decl_set(Decl** decls, size_t num_decls) {
 
 Decl* decl_new(DeclKind kind, const char* name) {
 	Decl* d = ast_alloc(sizeof(Decl));
+	d->loc = (SrcLoc){ src_name, src_line };
 	d->kind = kind;
 	d->name = name;
 	return d;
@@ -124,6 +127,7 @@ Decl* decl_typedef(const char* name, Typespec* type) {
 
 Expr* expr_new(ExprKind kind) {
 	Expr* e = ast_alloc(sizeof(Expr));
+	e->loc = (SrcLoc){ src_name, src_line };
 	e->kind = kind;
 	return e;
 }
@@ -226,6 +230,7 @@ Expr* expr_ternary(Expr* cond, Expr* then_expr, Expr* else_expr) {
 
 Stmt* stmt_new(StmtKind kind) {
 	Stmt* s = ast_alloc(sizeof(Stmt));
+	s->loc = (SrcLoc){ src_name, src_line };
 	s->kind = kind;
 	return s;
 }
@@ -305,7 +310,7 @@ Stmt* stmt_assign(TokenKind op, Expr* left, Expr* right) {
 	return s;
 }
 
-Stmt* stmt_init(const char* name, Expr* expr) {		// initialize variable
+Stmt* stmt_init(const char* name, Expr* expr) {
 	Stmt* s = stmt_new(STMT_INIT);
 	s->init.name = name;
 	s->init.expr = expr;
@@ -319,6 +324,7 @@ Stmt* stmt_expr(Expr* expr) {
 }
 
 #undef AST_DUP
+
 
 
 // Linked lists are very good for parsers

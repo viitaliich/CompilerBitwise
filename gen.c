@@ -131,8 +131,11 @@ void gen_func_decl(Decl* decl) {
 }
 
 void gen_forward_decls(void) {
-	for (size_t i = 0; i < buf_len(global_syms); i++) {
-		Sym* sym = global_syms[i];
+	for (size_t i = 0; i < global_syms.cap; i++) {
+		if (!global_syms.keys[i]) {
+			continue;
+		}
+		Sym* sym = global_syms.vals[i];
 		Decl* decl = sym->decl;
 		if (!decl) {
 			continue;
@@ -481,21 +484,18 @@ void gen_test(void) {
 	cdecl_test();
 
 	const char* code =
-		"var a = 'd'\n"
-		//"func example_test(): int { return fact_rec(10) == fact_iter(10); }\n"
-		//"union IntOrPtr { i: int; p: int*; }\n"
-		//"func f() {\n"
-		//"    u1 := IntOrPtr{i = 42};\n"
-		//"    u2 := IntOrPtr{p = cast(int*, 42)};\n"
-		//"    u1.i = 0;\n"
-		//"    u2.p = cast(int*, 0);\n"
-		//"}\n"
-		//"var i: int\n"
-		//"struct Vector { x: int; y: int; }\n"
-		//"func fact_iter(n: int): int { r := 1; for (i := 2; i <= n; i++) { r *= i; } return r; }\n"
-		//"func fact_rec(n: int): int { if (n == 0) { return 1; } else { return n * fact_rec(n-1); } }\n"
-
-
+		"func example_test(): int { return fact_rec(10) == fact_iter(10); }\n"
+		"union IntOrPtr { i: int; p: int*; }\n"
+		"// func f() {\n"
+		"//     u1 := IntOrPtr{i = 42};\n"
+		"//     u2 := IntOrPtr{p = cast(int*, 42)};\n"
+		"//     u1.i = 0;\n"
+		"//     u2.p = cast(int*, 0);\n"
+		"// }\n"
+		"var i: int\n"
+		"struct Vector { x, y: int; }\n"
+		"func fact_iter(n: int): int { r := 1; for (i := 2; i <= n; i++) { r *= i; } return r; }\n"
+		"func fact_rec(n: int): int { if (n == 0) { return 1; } else { return n * fact_rec(n-1); } }\n"
 #if 0
 		"func f1() { v := Vector{1, 2}; j := i; i++; j++; v.x = 2*j; }\n"
 		"func f2(n: int): int { return 2*n; }\n"
@@ -505,12 +505,12 @@ void gen_test(void) {
 		"func f6(n: int): int { p := 1; while (n) { p *= 2; n--; } return p; }\n"
 		"func f7(n: int): int { p := 1; do { p *= 2; n--; } while (n); return p; }\n"
 #endif
-		//"const n = 1+sizeof(p)\n"
-		//"var p: T*\n"
-		//"struct T { a: int[n]; }\n"
+		"const n = 1+sizeof(p)\n"
+		"var p: T*\n"
+		"struct T { a: int[n]; }\n"
 		;
 
-	init_stream(NULL,code);
+	init_stream(NULL, code);
 	init_global_syms();
 	sym_global_decls(parse_file());
 	finalize_syms();
@@ -557,12 +557,6 @@ union IntOrPtr {
 	int i;
 	int(*p);
 };
-void f(void) {
-	IntOrPtr u1 = (IntOrPtr){ .i = 42 };
-	IntOrPtr u2 = (IntOrPtr){ .p = (int*)(42) };
-	u1.i = 0;
-	u2.p = (int*)(0);
-}
 int i;
 struct Vector {
 	int x;
@@ -574,5 +568,6 @@ struct T {
 	int(a[n]);
 };
 #endif
+
 
 // Day 11. 7:45

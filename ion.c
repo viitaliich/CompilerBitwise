@@ -3,7 +3,7 @@ bool ion_compile_file(const char* path) {
 	if (!str) {
 		return false;
 	}
-	init_stream(NULL,path, str);
+	init_stream(path, str);
 	init_global_syms();
 	sym_global_decls(parse_file());
 	finalize_syms();
@@ -21,7 +21,7 @@ bool ion_compile_file(const char* path) {
 }
 
 const char* ion_compile_str(const char* str) {
-	init_stream(NULL,NULL, str);
+	init_stream(NULL, str);
 	init_global_syms();
 	sym_global_decls(parse_file());
 	finalize_syms();

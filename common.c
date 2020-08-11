@@ -39,16 +39,6 @@ void* memdup(void* src, size_t size) {
 	return dest;
 }
 
-void fatal(const char* fmt, ...) {
-	va_list args;
-	va_start(args, fmt);
-	printf("FATAL: ");
-	vprintf(fmt, args);
-	printf("\n");
-	va_end(args);
-	exit(1);
-}
-
 char* strf(const char* fmt, ...) {						// only for MSVC compiler (maybe)
 	va_list args;
 	va_start(args, fmt);
@@ -87,23 +77,19 @@ bool write_file(const char* path, const char* buf, size_t len) {
 	if (!file) {
 		return false;
 	}
-	bool result = false;
-	if (fwrite(buf, len, 1, file) != 1) {
-		goto done;
-	}
-	result = true;
-done:
+	size_t n = fwrite(buf, len, 1, file);
 	fclose(file);
-	return result;
+	return n == 1;
 }
 
 const char* get_ext(const char* path) {
-	for (const char* ptr = path + strlen(path); ptr != path; ptr--) {
-		if (ptr[-1] == '.') {
-			return ptr;
+	const char* ext = NULL;
+	for (; *path; path++) {
+		if (*path == '.') {
+			ext = path + 1;
 		}
 	}
-	return NULL;
+	return ext;
 }
 
 char* replace_ext(const char* path, const char* new_ext) {
@@ -121,7 +107,6 @@ char* replace_ext(const char* path, const char* new_ext) {
 	return new_path;
 }
 
-
 // stretchy buffer (dynamically growen array / cpp vector like). sean burret
 
 typedef struct BufHdr {		//Buf header
@@ -130,19 +115,17 @@ typedef struct BufHdr {		//Buf header
 	int8_t buf[];
 } BufHdr;
 
-// two underscores - PRIVATE
 // b - buffer pointer. for the pointer arithmetic we need to subtract the size of 2 fields that precede the buffer
-#define buf__hdr(b)	((BufHdr*)((int8_t*)b - offsetof(BufHdr, buf)))
-#define buf__fit(b, n) ((n) <= buf_cap(b) ? 0 : ((b) = buf__grow((b), (n), sizeof(*(b)))))
+#define buf__hdr(b) ((BufHdr *)((char *)(b) - offsetof(BufHdr, buf)))
 
-// one uderscores - PUBLIC
-#define buf_len(b) ((b) ? buf__hdr(b) -> len : 0) 
-#define buf_cap(b) ((b) ? buf__hdr(b) -> cap : 0)
+#define buf_len(b) ((b) ? buf__hdr(b)->len : 0)
+#define buf_cap(b) ((b) ? buf__hdr(b)->cap : 0)
 #define buf_end(b) ((b) + buf_len(b))
 #define buf_sizeof(b) ((b) ? buf_len(b)*sizeof(*b) : 0)
 
 #define buf_free(b) ((b) ? (free(buf__hdr(b)), (b) = NULL) : 0)
-#define buf_push(b, ...) (buf__fit((b), 1 + buf_len(b)), (b)[buf__hdr(b)->len++] = (__VA_ARGS__))
+#define buf_fit(b, n) ((n) <= buf_cap(b) ? 0 : ((b) = buf__grow((b), (n), sizeof(*(b)))))
+#define buf_push(b, ...) (buf_fit((b), 1 + buf_len(b)), (b)[buf__hdr(b)->len++] = (__VA_ARGS__))
 #define buf_printf(b, ...) ((b) = buf__printf((b), __VA_ARGS__))
 #define buf_clear(b) ((b) ? buf__hdr(b)->len = 0 : 0)		// resets the buffer but doesn't free it
 
@@ -175,7 +158,7 @@ char* buf__printf(char* buf, const char* fmt, ...) {
 	size_t n = 1 + vsnprintf(buf_end(buf), cap, fmt, args);
 	va_end(args);
 	if (n > cap) {
-		buf__fit(buf, n + buf_len(buf));
+		buf_fit(buf, n + buf_len(buf));
 		va_start(args, fmt);
 		size_t new_cap = buf_cap(buf) - buf_len(buf);
 		n = 1 + vsnprintf(buf_end(buf), new_cap, fmt, args);
@@ -186,6 +169,7 @@ char* buf__printf(char* buf, const char* fmt, ...) {
 	return buf;
 }
 
+
 void buf_test(void) {
 	int* buf = NULL;
 	assert(buf_len(buf) == 0);
@@ -194,7 +178,7 @@ void buf_test(void) {
 		buf_push(buf, i);
 	}
 	assert(buf_len(buf) == n);
-	for (int i = 0; i < buf_len(buf); i++) {
+	for (size_t i = 0; i < buf_len(buf); i++) {
 		assert(buf[i] == i);
 	}
 	buf_free(buf);
@@ -246,29 +230,139 @@ void arena_free(Arena* arena) {
 	buf_free(arena->blocks);	// fix not freeing arena block array
 }
 
-// string interning
+// Hash map
+
+uint64_t uint64_hash(uint64_t x) {
+	x *= 0xff51afd7ed558ccdul;
+	x ^= x >> 32;
+	return x;
+}
+
+uint64_t ptr_hash(void* ptr) {
+	return uint64_hash((uintptr_t)ptr);
+}
+
+uint64_t str_hash(const char* str, size_t len) {
+	uint64_t x = 0xcbf29ce484222325ull;
+	for (size_t i = 0; i < len; i++) {
+		x ^= str[i];
+		x *= 0x100000001b3ull;
+		x ^= x >> 32;
+	}
+	return x;
+}
+
+typedef struct Map {
+	void** keys;
+	void** vals;
+	size_t len;
+	size_t cap;
+} Map;
+
+void* map_get(Map* map, void* key) {
+	if (map->len == 0) {
+		return NULL;
+	}
+	assert(IS_POW2(map->cap));
+	size_t i = (size_t)ptr_hash(key);
+	assert(map->len < map->cap);
+	for (;;) {
+		i &= map->cap - 1;
+		if (map->keys[i] == key) {
+			return map->vals[i];
+		}
+		else if (!map->keys[i]) {
+			return NULL;
+		}
+		i++;
+	}
+	return NULL;
+}
+
+void map_put(Map* map, void* key, void* val);
+
+void map_grow(Map* map, size_t new_cap) {
+	new_cap = MAX(16, new_cap);
+	Map new_map = {
+		.keys = xcalloc(new_cap, sizeof(void*)),
+		.vals = xmalloc(new_cap * sizeof(void*)),
+		.cap = new_cap,
+	};
+	for (size_t i = 0; i < map->cap; i++) {
+		if (map->keys[i]) {
+			map_put(&new_map, map->keys[i], map->vals[i]);
+		}
+	}
+	free(map->keys);
+	free(map->vals);
+	*map = new_map;
+}
+
+void map_put(Map* map, void* key, void* val) {
+	assert(key);
+	assert(val);
+	if (2 * map->len >= map->cap) {
+		map_grow(map, 2 * map->cap);
+	}
+	assert(2 * map->len < map->cap);
+	assert(IS_POW2(map->cap));
+	size_t i = (size_t)ptr_hash(key);
+	for (;;) {
+		i &= map->cap - 1;
+		if (!map->keys[i]) {
+			map->len++;
+			map->keys[i] = key;
+			map->vals[i] = val;
+			return;
+		}
+		else if (map->keys[i] == key) {
+			map->vals[i] = val;
+			return;
+		}
+		i++;
+	}
+}
+
+void map_test(void) {
+	Map map = { 0 };
+	enum { N = 1024 };
+	for (size_t i = 1; i < N; i++) {
+		map_put(&map, (void*)i, (void*)(i + 1));
+	}
+	for (size_t i = 1; i < N; i++) {
+		void* val = map_get(&map, (void*)i);
+		assert(val == (void*)(i + 1));
+	}
+}
+
+// String interning
 
 typedef struct Intern {
 	size_t len;
-	const char* str;
+	struct Intern* next;
+	char str[];
 } Intern;
 
-Arena str_arena;
-Intern* interns = NULL;
+Arena intern_arena;
+Map interns;
 
 const char* str_intern_range(const char* start, const char* end) {
 	size_t len = end - start;
-	// search through the table
-	for (Intern* it = interns; it != buf_end(interns); it++) {
+	uint64_t hash = str_hash(start, len);
+	void* key = (void*)(uintptr_t)(hash ? hash : 1);
+	Intern* intern = map_get(&interns, key);
+	for (Intern* it = intern; it; it = it->next) {
 		if (it->len == len && strncmp(it->str, start, len) == 0) {
 			return it->str;
 		}
 	}
-	char* str = arena_alloc(&str_arena, len + 1);
-	memcpy(str, start, len);
-	str[len] = 0;	// NULL terminate		//???
-	buf_push(interns, (Intern) { len, str });
-	return str;
+	Intern* new_intern = arena_alloc(&intern_arena, offsetof(Intern, str) + len + 1);
+	new_intern->len = len;
+	new_intern->next = intern;
+	memcpy(new_intern->str, start, len);
+	new_intern->str[len] = 0;
+	map_put(&interns, key, new_intern);
+	return new_intern->str;
 }
 
 const char* str_intern(const char* str) {

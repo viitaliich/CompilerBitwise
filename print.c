@@ -19,8 +19,6 @@ void flush_print_buf(FILE* file) {
 	}
 }
 
-
-
 //	???
 void print_newline(void) {
 	printf("\n%.*s", 2 * indent, "                                                                      ");
@@ -399,7 +397,6 @@ void print_decl(Decl* decl) {
 		break;
 	}
 }
-
 
 // like ast_test()
 void print_test(void) {

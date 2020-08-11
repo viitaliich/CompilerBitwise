@@ -82,7 +82,6 @@ CompoundField parse_expr_compound_field(void) {
 	}
 }
 
-
 Expr* parse_expr_compound(Typespec* type) {
 	expect_token(TOKEN_LBRACE);
 	CompoundField* fields = NULL;
@@ -195,7 +194,13 @@ Expr* parse_expr_base(void) {
 }
 
 bool is_unary_op(void) {
-	return is_token(TOKEN_ADD) || is_token(TOKEN_SUB) || is_token(TOKEN_MUL) || is_token(TOKEN_AND) || is_token(TOKEN_NEG) || is_token(TOKEN_NOT);
+	return
+		is_token(TOKEN_ADD) ||
+		is_token(TOKEN_SUB) ||
+		is_token(TOKEN_MUL) ||
+		is_token(TOKEN_AND) ||
+		is_token(TOKEN_NEG) ||
+		is_token(TOKEN_NOT);
 }
 
 Expr* parse_expr_unary(void) {
@@ -619,7 +624,6 @@ DeclSet* parse_file(void) {
 	return decl_set(decls, buf_len(decls));
 }
 
-
 void parse_test(void) {
 	const char* decls[] = {
 		"var x: char[256] = {1, 2, 3, ['a'] = 4}",
@@ -637,13 +641,13 @@ void parse_test(void) {
 		"const pi = 3.14",
 		"union IntOrFloat { i: int; f: float; }",
 		"typedef Vectors = Vector[1+2]",
-		"func f(void) { do { print(42); } while(1); }",
+		"func f() { do { print(42); } while(1); }",
 		"typedef T = (func(int):int)[16]",
-		"func f(void) { enum E { A, B, C } return; }",
-		"func f(void) { if (1) { return 1; } else if (2) { return 2; } else { return 3; } }",
+		"func f() { enum E { A, B, C } return; }",
+		"func f() { if (1) { return 1; } else if (2) { return 2; } else { return 3; } }",
 	};
 	for (const char** it = decls; it != decls + sizeof(decls) / sizeof(*decls); it++) {
-		init_stream(NULL,*it);
+		init_stream(NULL, *it);
 		Decl* decl = parse_decl();
 		print_decl(decl);
 		printf("\n");

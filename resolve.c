@@ -1,5 +1,3 @@
-// Type Checking/Inference
-
 typedef enum TypeKind {
 	TYPE_NONE,
 	TYPE_INCOMPLETE,
@@ -31,7 +29,7 @@ struct Type {
 	Sym* sym;
 	union {
 		struct {
-			Type* elem;		// type we point to
+			Type* elem;
 		} ptr;
 		struct {
 			Type* elem;
@@ -73,28 +71,20 @@ size_t type_sizeof(Type* type) {
 
 size_t type_alignof(Type* type) {
 	assert(type->kind > TYPE_COMPLETING);
-	assert(IS_POW2(type->align));
 	return type->align;
 }
 
-typedef struct CachedPtrType {
-	Type* elem;		// address of elemnt point to
-	Type* ptr;		// address of pointer which points
-} CachedPtrType;
-
-CachedPtrType* cached_ptr_types;
+Map cached_ptr_types;
 
 Type* type_ptr(Type* elem) {
-	for (CachedPtrType* it = cached_ptr_types; it != buf_end(cached_ptr_types); it++) {
-		if (it->elem == elem) {
-			return it->ptr;
-		}
+	Type* type = map_get(&cached_ptr_types, elem);
+	if (!type) {
+		type = type_alloc(TYPE_PTR);
+		type->size = PTR_SIZE;
+		type->align = PTR_ALIGN;
+		type->ptr.elem = elem;
+		map_put(&cached_ptr_types, elem, type);
 	}
-	Type* type = type_alloc(TYPE_PTR);
-	type->size = PTR_SIZE;
-	type->align = PTR_ALIGN;
-	type->ptr.elem = elem;
-	buf_push(cached_ptr_types, (CachedPtrType) { elem, type });
 	return type;
 }
 
@@ -174,6 +164,7 @@ void type_complete_struct(Type* type, TypeField* fields, size_t num_fields) {
 	type->size = 0;
 	type->align = 0;
 	for (TypeField* it = fields; it != fields + num_fields; it++) {
+		assert(IS_POW2(type_alignof(it->type)));
 		type->size = type_sizeof(it->type) + ALIGN_UP(type->size, type_alignof(it->type));
 		type->align = MAX(type->align, type_alignof(it->type));
 	}
@@ -229,9 +220,9 @@ enum {
 	MAX_LOCAL_SYMS = 1024
 };
 
-Sym** global_syms;
+Map global_syms;
 Sym local_syms[MAX_LOCAL_SYMS];
-Sym* local_syms_end = local_syms;		// base of the stack...		???
+Sym* local_syms_end = local_syms;
 
 Sym* sym_new(SymKind kind, const char* name, Decl* decl) {
 	Sym* sym = xcalloc(1, sizeof(Sym));
@@ -284,13 +275,7 @@ Sym* sym_get(const char* name) {
 			return sym;
 		}
 	}
-	for (Sym** it = global_syms; it != buf_end(global_syms); it++) {
-		Sym* sym = *it;
-		if (sym->name == name) {
-			return sym;
-		}
-	}
-	return NULL;
+	return map_get(&global_syms, (void*)name);
 }
 
 void sym_push_var(const char* name, Type* type) {
@@ -313,13 +298,17 @@ void sym_leave(Sym* sym) {
 	local_syms_end = sym;
 }
 
+void sym_global_put(Sym* sym) {
+	map_put(&global_syms, (void*)sym->name, sym);
+}
+
 Sym* sym_global_decl(Decl* decl) {
 	Sym* sym = sym_decl(decl);
-	buf_push(global_syms, sym);
+	sym_global_put(sym);
 	decl->sym = sym;
 	if (decl->kind == DECL_ENUM) {
 		for (size_t i = 0; i < decl->enum_decl.num_items; i++) {
-			buf_push(global_syms, sym_enum_const(decl->enum_decl.items[i].name, decl));
+			sym_global_put(sym_enum_const(decl->enum_decl.items[i].name, decl));
 		}
 	}
 	return sym;
@@ -329,11 +318,11 @@ Sym* sym_global_type(const char* name, Type* type) {
 	Sym* sym = sym_new(SYM_TYPE, name, NULL);
 	sym->state = SYM_RESOLVED;
 	sym->type = type;
-	buf_push(global_syms, sym);
+	sym_global_put(sym);
 	return sym;
 }
 
-typedef struct ResolvedExpr {
+typedef struct Operand {
 	Type* type;
 	bool is_lvalue;
 	bool is_const;
@@ -377,7 +366,7 @@ Type* resolve_typespec(Typespec* typespec) {
 	case TYPESPEC_NAME: {
 		Sym* sym = resolve_name(typespec->name);
 		if (sym->kind != SYM_TYPE) {
-			fatal("%s must denote a type", typespec->name);
+			fatal_error(typespec->loc, "%s must denote a type", typespec->name);
 			return NULL;
 		}
 		result = sym->type;
@@ -391,7 +380,7 @@ Type* resolve_typespec(Typespec* typespec) {
 		if (size < 0) {
 			fatal("Negative array size");
 		}
-		result = type_array(resolve_typespec(typespec->array.elem), size);
+		result = type_array(resolve_typespec(typespec->array.elem), (size_t)size);
 		break;
 	}
 	case TYPESPEC_FUNC: {
@@ -439,9 +428,6 @@ void complete_type(Type* type) {
 	}
 	if (buf_len(fields) == 0) {
 		fatal("No fields");
-	}
-	if (duplicate_fields(fields, buf_len(fields))) {
-		fatal("Duplicate fields");
 	}
 	if (duplicate_fields(fields, buf_len(fields))) {
 		fatal("Duplicate fields");
@@ -511,11 +497,11 @@ void resolve_cond_expr(Expr* expr) {
 }
 
 void resolve_stmt_block(StmtList block, Type* ret_type) {
-	Sym* start = sym_enter();
+	Sym* scope = sym_enter();
 	for (size_t i = 0; i < block.num_stmts; i++) {
 		resolve_stmt(block.stmts[i], ret_type);
 	}
-	sym_leave(start);
+	sym_leave(scope);
 }
 
 void resolve_stmt(Stmt* stmt, Type* ret_type) {
@@ -555,12 +541,12 @@ void resolve_stmt(Stmt* stmt, Type* ret_type) {
 		resolve_stmt_block(stmt->while_stmt.block, ret_type);
 		break;
 	case STMT_FOR: {
-		Sym* start = sym_enter();
+		Sym* scope = sym_enter();
 		resolve_stmt(stmt->for_stmt.init, ret_type);
 		resolve_cond_expr(stmt->for_stmt.cond);
 		resolve_stmt_block(stmt->for_stmt.block, ret_type);
 		resolve_stmt(stmt->for_stmt.next, ret_type);
-		sym_leave(start);
+		sym_leave(scope);
 		break;
 	}
 	case STMT_SWITCH: {
@@ -578,17 +564,14 @@ void resolve_stmt(Stmt* stmt, Type* ret_type) {
 	}
 	case STMT_ASSIGN: {
 		Operand left = resolve_expr(stmt->assign.left);
-		if (stmt->assign.right) {
-			Operand right = resolve_expected_expr(stmt->assign.right, left.type);
-			if (left.type != right.type) {
-				fatal("Left/right types do not match in assignment statement");
-			}
+		if (stmt->assign.right && resolve_expected_expr(stmt->assign.right, left.type).type != left.type) {
+			fatal("Left/right types do not match in assignment statement");
 		}
 		if (!left.is_lvalue) {
 			fatal("Cannot assign to non-lvalue");
 		}
 		if (stmt->assign.op != TOKEN_ASSIGN && left.type != type_int) {
-			fatal("Can only use assignment operators with type int");
+			fatal("Can only use %s with type int", token_kind_name(stmt->assign.op));
 		}
 		break;
 	}
@@ -599,19 +582,6 @@ void resolve_stmt(Stmt* stmt, Type* ret_type) {
 		assert(0);
 		break;
 	}
-}
-
-void resolve_func(Sym* sym) {
-	Decl* decl = sym->decl;
-	assert(decl->kind == DECL_FUNC);
-	assert(sym->state == SYM_RESOLVED);
-	Sym* start = sym_enter();
-	for (size_t i = 0; i < decl->func.num_params; i++) {
-		FuncParam param = decl->func.params[i];
-		sym_push_var(param.name, resolve_typespec(param.type));
-	}
-	resolve_stmt_block(decl->func.block, resolve_typespec(decl->func.ret_type));
-	sym_leave(start);
 }
 
 void resolve_func_body(Sym* sym) {
@@ -658,16 +628,6 @@ void resolve_sym(Sym* sym) {
 	buf_push(ordered_syms, sym);
 }
 
-void complete_sym(Sym* sym) {
-	resolve_sym(sym);
-	if (sym->kind == SYM_TYPE) {
-		complete_type(sym->type);
-	}
-	else if (sym->kind == SYM_FUNC) {
-		resolve_func(sym);
-	}
-}
-
 void finalize_sym(Sym* sym) {
 	resolve_sym(sym);
 	if (sym->kind == SYM_TYPE) {
@@ -681,7 +641,7 @@ void finalize_sym(Sym* sym) {
 Sym* resolve_name(const char* name) {
 	Sym* sym = sym_get(name);
 	if (!sym) {
-		fatal("Non-existent name");
+		fatal("Undeclared name '%s'", name);
 		return NULL;
 	}
 	resolve_sym(sym);
@@ -742,7 +702,7 @@ int64_t eval_int_binary(TokenKind op, int64_t left, int64_t right) {
 		return right != 0 ? left % right : 0;
 	case TOKEN_AND:
 		return left & right;
-		// TODO: Don't allow undefined behaviour (UB) in shifts, etc
+		// TODO: Don't allow UB in shifts, etc
 	case TOKEN_LSHIFT:
 		return left << right;
 	case TOKEN_RSHIFT:
@@ -888,6 +848,7 @@ Operand resolve_expr_compound(Expr* expr, Type* expected_type) {
 			if (init.type != type->aggregate.fields[index].type) {
 				fatal("Compound literal field type mismatch");
 			}
+			index++;
 		}
 	}
 	else {
@@ -898,12 +859,12 @@ Operand resolve_expr_compound(Expr* expr, Type* expected_type) {
 			if (field.kind == FIELD_NAME) {
 				fatal("Named field initializer not allowed for array compound literals");
 			}
-			else if (field.kind == FIELD_INDEX) { 
+			else if (field.kind == FIELD_INDEX) {
 				int64_t result = resolve_const_expr(field.index);
 				if (result < 0) {
 					fatal("Field initializer index cannot be negative");
 				}
-				index = result;
+				index = (size_t)result;
 			}
 			if (index >= type->array.size) {
 				fatal("Field initializer in array compound literal out of range");
@@ -1070,7 +1031,7 @@ void init_global_syms(void) {
 	sym_global_type(str_intern("void"), type_void);
 	sym_global_type(str_intern("char"), type_char);
 	sym_global_type(str_intern("int"), type_int);
-	sym_global_type(str_intern("float"), type_int);
+	sym_global_type(str_intern("float"), type_float);
 }
 
 void sym_global_decls(DeclSet* declset) {
@@ -1080,11 +1041,15 @@ void sym_global_decls(DeclSet* declset) {
 }
 
 void finalize_syms(void) {
-	for (Sym** it = global_syms; it != buf_end(global_syms); it++) {
-		Sym* sym = *it;
+	for (size_t i = 0; i < global_syms.cap; i++) {
+		if (!global_syms.keys[i]) {
+			continue;
+		}
+		Sym* sym = global_syms.vals[i];
 		finalize_sym(sym);
 	}
 }
+
 
 void resolve_test(void) {
 	Type* int_ptr = type_ptr(type_int);
@@ -1099,97 +1064,69 @@ void resolve_test(void) {
 	Type* float3_array = type_array(type_float, 3);
 	assert(type_array(type_float, 3) == float3_array);
 	assert(float4_array != float3_array);
-	Type* int_int_func = type_func(&type_int, 1, type_int);		// why &	???
+	Type* int_int_func = type_func(&type_int, 1, type_int);
 	assert(type_func(&type_int, 1, type_int) == int_int_func);
 	Type* int_func = type_func(NULL, 0, type_int);
 	assert(int_int_func != int_func);
 	assert(int_func == type_func(NULL, 0, type_int));
 
-	/*struct A { char c; };
-	struct B { int i; };
-	struct C { char c; struct A a; };
-	struct D { char c; struct B b; };
-
-	struct C f;
-	f.a.c;
-	f.c;*/
-
-
 	init_global_syms();
 
 	const char* code[] = {
-		//"func f() {}",
-		"var i: int",
-		"func f() { i++; }",
-		//"func f() { j := i; i++; j++; }",
-
-		//"struct Vector { x, y: int; }",
-		//"func f1() { v := Vector{1, 2}; j := i; i++; j++; v.x = 2*j; }",
-		//"func g(n: int): int { return 2*n; }",
-		//"func g(n: int): float { return 2*n; }",
-		//"func h(x: int): int { if (x) { return -x; } else { return -1; } }",
-		//"func f2(n: int): int { return 2*n; }",
-		//"func f3(x: int): int { if (x) { return -x; } else if (x % 2 == 0) { return 42; } else { return -1; } }",
-		//"func f4(n: int): int { for (i := 0; i < n; i++) { if (i % 3 == 0) { return n; } } return 0; }",
-		//"func f5(x: int): int { switch(x) { case 0: case 1: return 42; case 3: default: return -1; } }",
-		//"func f6(n: int): int { p := 1; while (n) { p *= 2; n--; } return p; }",
-		//"func f7(n: int): int { p := 1; do { p *= 2; n--; } while (n); return p; }",
-		//"func add(v: Vector, w: Vector): Vector { return {v.x + w.x, v.y + w.y}; }",
-
-
-
-
-		//"struct C { c: char; a: A; }",
-		//"struct D { c: char; b: B; }",
-		//"struct A { c: char; }",
-		//"struct B { i: int; }",
-		
-		//"struct Vector { x, y: int; }",
-		//"func print(v: Vector) { printf(\"{%d, %d}\", v.x, v.y); }",
-		//"func add(v: Vector, w: Vector): Vector { return {v.x + w.x, v.y + w.y}; }",
-		//"var x = add({1,2}, {3,4})",
-		//"var v: Vector = {1,2}",
-		//"var w = Vector{3,4}",
-		//"var p: void*",
-		//"var i = cast(int, p) + 1",
-		//"var fp: func(Vector)",
-		//"struct Dup { x: int; x: int; }",
-		//"var a: int[3] = {1,2,3}",
-		//"var b: int[4]",
-		//"var i = a[1]",
-		//"var p = &a[1]",
-		//"var i = p[1]",
-		//"var j = *p",
-		//"const n = sizeof(a)",
-		//"const m = sizeof(&a[0])",
-		//"const l = sizeof(1 ? a : b)",
-		//"var pi = 3.14",
-		//"var name = \"Per\"",
-		////"var v = Vector{1,2}",
-		//"var v: Vector = Vector{1,2}",
-		//"var w = Vector {3, 4} ",
-		//"var j = cast(int, p)",
-		//"var q = cast(int*, j)",
-		//"const i = 42",
-		//"const j = +i",
-		//"const k = -i",
-		//"const a = 1000/((2*3-5) << 1)",
-		//"const b = !0",
-		//"const c = ~100 + 1 == -100",
-		//"const k = 1 ? 2 : 3",
 		"union IntOrPtr { i: int; p: int*; }",
 		"var u1 = IntOrPtr{i = 42}",
 		"var u2 = IntOrPtr{p = cast(int*, 42)}",
-		//"var i = 42",
-		//"var u = IntOrPtr{i, &i}",
-		//"var u = IntOrPtr{&i, i}",
-		//"var a = (:int[3]){1, 2, 3}",
-		//"var a = (:int[3]){1, 2}",
-		//"var a = (:int[3]){1, 2, 3, 4}",
-		//"var a: int[3] = (:int[3]){1, 2, 3}",
-		//"var a: int[3] = {1,2,3}",				// must work
-
-		/*"const n = 1+sizeof(p)",
+		"var i: int",
+		"struct Vector { x, y: int; }",
+		"func f1() { v := Vector{1, 2}; j := i; i++; j++; v.x = 2*j; }",
+		"func f2(n: int): int { return 2*n; }",
+		"func f3(x: int): int { if (x) { return -x; } else if (x % 2 == 0) { return 42; } else { return -1; } }",
+		"func f4(n: int): int { for (i := 0; i < n; i++) { if (i % 3 == 0) { return n; } } return 0; }",
+		"func f5(x: int): int { switch(x) { case 0: case 1: return 42; case 3: default: return -1; } }",
+		"func f6(n: int): int { p := 1; while (n) { p *= 2; n--; } return p; }",
+		"func f7(n: int): int { p := 1; do { p *= 2; n--; } while (n); return p; }",
+		/*
+		"var i: int",
+		"func add(v: Vector, w: Vector): Vector { return {v.x + w.x, v.y + w.y}; }",
+		"var a: int[256] = {1, 2, ['a'] = 42, [255] = 123}",
+		"var v: Vector = 0 ? {1,2} : {3,4}",
+		"var vs: Vector[2][2] = {{{1,2},{3,4}}, {{5,6},{7,8}}}",
+		"struct A { c: char; }",
+		"struct B { i: int; }",
+		"struct C { c: char; a: A; }",
+		"struct D { c: char; b: B; }",
+		"func print(v: Vector) { printf(\"{%d, %d}\", v.x, v.y); }",
+		"var x = add({1,2}, {3,4})",
+		"var v: Vector = {1,2}",
+		"var w = Vector{3,4}",
+		"var p: void*",
+		"var i = cast(int, p) + 1",
+		"var fp: func(Vector)",
+		"struct Dup { x: int; x: int; }",
+		"var a: int[3] = {1,2,3}",
+		"var b: int[4]",
+		"var p = &a[1]",
+		"var i = p[1]",
+		"var j = *p",
+		"const n = sizeof(a)",
+		"const m = sizeof(&a[0])",
+		"const l = sizeof(1 ? a : b)",
+		"var pi = 3.14",
+		"var name = \"Per\"",
+		"var v = Vector{1,2}",
+		"var j = cast(int, p)",
+		"var q = cast(int*, j)",
+		"const i = 42",
+		"const j = +i",
+		"const k = -i",
+		"const a = 1000/((2*3-5) << 1)",
+		"const b = !0",
+		"const c = ~100 + 1 == -100",
+		"const k = 1 ? 2 : 3",
+		"union IntOrPtr { i: int; p: int*; }",
+		"var i = 42",
+		"var u = IntOrPtr{i, &i}",
+		"const n = 1+sizeof(p)",
 		"var p: T*",
 		"var u = *p",
 		"struct T { a: int[n]; }",
@@ -1198,14 +1135,15 @@ void resolve_test(void) {
 		"typedef S = int[n+m]",
 		"const m = sizeof(t.a)",
 		"var i = n+m",
-		"var q = &i",*/
-		//        "const n = sizeof(x)",
-		//        "var x: T",
-		//        "struct T { s: S*; }",
-		//        "struct S { t: T[n]; }",
+		"var q = &i",
+		"const n = sizeof(x)",
+		"var x: T",
+		"struct T { s: S*; }",
+		"struct S { t: T[n]; }",
+*/
 	};
 	for (size_t i = 0; i < sizeof(code) / sizeof(*code); i++) {
-		init_stream(NULL,code[i]);
+		init_stream(NULL, code[i]);
 		Decl* decl = parse_decl();
 		sym_global_decl(decl);
 	}
