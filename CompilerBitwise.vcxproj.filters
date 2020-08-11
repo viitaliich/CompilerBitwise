@@ -39,6 +39,9 @@
     <ClCompile Include="gen.c">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
+    <ClCompile Include="ion.c">
+      <Filter>Исходные файлы</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Text Include="syntax.txt">
@@ -49,5 +52,10 @@
     <ClInclude Include="ast.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="test1.ion">
+      <Filter>Исходные файлы</Filter>
+    </None>
   </ItemGroup>
 </Project>

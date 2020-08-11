@@ -30,8 +30,8 @@ void init_keywords(void) {
 	if (inited) {
 		return;
 	}
-	char* arena_end = str_arena.end;
 	KEYWORD(typedef);
+	char* arena_end = str_arena.end;
 	KEYWORD(enum);
 	KEYWORD(struct);
 	KEYWORD(union);
@@ -247,6 +247,27 @@ typedef struct Token {
 
 Token token;	// global token, corresponds to the current token.
 const char* stream;
+const char* line_start;
+size_t line_number;
+
+void syntax_error(const char* fmt, ...) {
+	va_list args;
+	va_start(args, fmt);
+	printf("Syntax Error(%llu): ", line_number);
+	vprintf(fmt, args);
+	printf("\n");
+	va_end(args);
+}
+
+void fatal_syntax_error(const char* fmt, ...) {
+	va_list args;
+	va_start(args, fmt);
+	printf("Syntax Error: ");
+	vprintf(fmt, args);
+	printf("\n");
+	va_end(args);
+	exit(1);
+}
 
 const char* token_info(void) {
 	if (token.kind == TOKEN_NAME || token.kind == TOKEN_KEYWORD) {
@@ -474,7 +495,10 @@ repeat:								// that's not good ???
 		// could be (but not recomended!) if(isdigit(*stream)...)
 	case ' ': case '\n': case '\r': case '\t': case '\v':
 		while (isspace(*stream)) {
-			stream++;
+			if (*stream++ == '\n') {
+				line_start = stream;
+				line_number++;
+			}
 		}
 		goto repeat;
 		break;
@@ -589,8 +613,11 @@ repeat:								// that's not good ???
 #undef CASE2
 #undef CASE3
 
-void init_stream(const char* str) {
-	stream = str;
+void init_stream(NULL,"<string>",const char* name, const char* buf) {
+	stream = buf;
+	src_name = name ? name : "<anonymous>";
+	src_line = 1;
+	line_start = stream;
 	next_token();
 }
 
@@ -664,7 +691,7 @@ void lex_test(void) {
 	keyword_test();
 	// Integer literal tests
 	// Make sure UINT64_MAX doesn't trigger overflow
-	init_stream("0 18446744073709551615 0xffffffffffffffff 042 0b11");
+	init_stream(NULL,"<string>","0 18446744073709551615 0xffffffffffffffff 042 0b11");
 	assert_token_int(0);
 	assert_token_int(18446744073709551615ull);
 	assert(token.mod == TOKENMOD_HEX);
@@ -674,12 +701,12 @@ void lex_test(void) {
 	assert(token.mod == TOKENMOD_BIN);
 	assert_token_int(0x3);		// 0x3 == 0b11		// that's bin
 	// Make sure INT_MAX doesn't trigger overflow
-	init_stream("2147483647");
+	init_stream(NULL,"<string>","2147483647");
 	assert_token_int(2147483647);
 	assert_token_eof();
 
 	// Float literal tests
-	init_stream("3.14 .123 42. 3e10");
+	init_stream(NULL,"<string>","3.14 .123 42. 3e10");
 	assert_token_float(3.14);
 	assert_token_float(.123);
 	assert_token_float(42.);
@@ -687,19 +714,19 @@ void lex_test(void) {
 	assert_token_eof();
 
 	// Char literal tests
-	init_stream("'a' '\\n'");
+	init_stream(NULL,"<string>","'a' '\\n'");
 	assert_token_int('a');
 	assert_token_int('\n');
 	assert_token_eof();
 
 	// String literal tests
-	init_stream("\"foo\" \"a\\nb\"");
+	init_stream(NULL,"<string>","\"foo\" \"a\\nb\"");
 	assert_token_str("foo");
 	assert_token_str("a\nb");
 	assert_token_eof();
 
 	// Operator tests
-	init_stream(": := + += ++ < <= << <<=");
+	init_stream(NULL,"<string>",": := + += ++ < <= << <<=");
 	assert_token(TOKEN_COLON);
 	assert_token(TOKEN_COLON_ASSIGN);
 	assert_token(TOKEN_ADD);
@@ -712,7 +739,7 @@ void lex_test(void) {
 	assert_token_eof();
 
 	// Misc tests
-	init_stream("XY+(XY)_HELLO1,234+994");
+	init_stream(NULL,"<string>","XY+(XY)_HELLO1,234+994");
 	assert_token_name("XY");
 	assert_token(TOKEN_ADD);
 	assert_token(TOKEN_LPAREN);
@@ -814,7 +841,7 @@ int parse_expr(void) {
 }
 
 int parse_expr_str(const char* str) {
-	init_stream(str);
+	init_stream(NULL,"<string>",str);
 	return parse_expr();
 
 }

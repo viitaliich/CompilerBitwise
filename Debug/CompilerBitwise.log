@@ -1,5 +1,14 @@
 ﻿  main.c
-D:\dev\CompilerBitwise\CompilerBitwise\common.c(155,20): warning C4018: <: несоответствие типов со знаком и без знака
+D:\dev\CompilerBitwise\CompilerBitwise\common.c(177,20): warning C4018: <: несоответствие типов со знаком и без знака
+D:\dev\CompilerBitwise\CompilerBitwise\common.c(275,10): warning C4013: map_test: нет определения; предполагается "extern" с возвратом типа "int"
 D:\dev\CompilerBitwise\CompilerBitwise\resolve.c(394,67): warning C4244: функция: преобразование "int64_t" в "size_t", возможна потеря данных
 D:\dev\CompilerBitwise\CompilerBitwise\resolve.c(906,19): warning C4244: =: преобразование "int64_t" в "size_t", возможна потеря данных
-  CompilerBitwise.vcxproj -> D:\dev\CompilerBitwise\CompilerBitwise\Debug\CompilerBitwise.exe
+D:\dev\CompilerBitwise\CompilerBitwise\ion.c(6,23): warning C4020: init_stream: слишком много фактических параметров
+D:\dev\CompilerBitwise\CompilerBitwise\ion.c(13,34): warning C4013: replace_ext: нет определения; предполагается "extern" с возвратом типа "int"
+D:\dev\CompilerBitwise\CompilerBitwise\ion.c(17,17): warning C4013: write_file: нет определения; предполагается "extern" с возвратом типа "int"
+D:\dev\CompilerBitwise\CompilerBitwise\ion.c(13,1): warning C4047: инициализация: "const char *" отличается по уровням косвенного обращения от "int"
+D:\dev\CompilerBitwise\CompilerBitwise\ion.c(24,23): warning C4020: init_stream: слишком много фактических параметров
+main.obj : error LNK2019: ёё√ыър эр эхЁрчЁх°хээ√щ тэх°эшщ ёшьтюы _map_test т ЇєэъЎшш _common_test
+main.obj : error LNK2019: ёё√ыър эр эхЁрчЁх°хээ√щ тэх°эшщ ёшьтюы _replace_ext т ЇєэъЎшш _ion_compile_file
+main.obj : error LNK2019: ёё√ыър эр эхЁрчЁх°хээ√щ тэх°эшщ ёшьтюы _write_file т ЇєэъЎшш _ion_compile_file
+D:\dev\CompilerBitwise\CompilerBitwise\Debug\CompilerBitwise.exe : fatal error LNK1120: эхЁрчЁх°хээ√ї тэх°эшї ¤ыхьхэЄют: 3

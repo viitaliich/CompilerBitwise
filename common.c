@@ -49,25 +49,6 @@ void fatal(const char* fmt, ...) {
 	exit(1);
 }
 
-void syntax_error(const char* fmt, ...) {
-	va_list args;
-	va_start(args, fmt);
-	printf("Syntax Error: ");
-	vprintf(fmt, args);
-	printf("\n");
-	va_end(args);
-}
-
-void fatal_syntax_error(const char* fmt, ...) {
-	va_list args;
-	va_start(args, fmt);
-	printf("Syntax Error: ");
-	vprintf(fmt, args);
-	printf("\n");
-	va_end(args);
-	exit(1);
-}
-
 char* strf(const char* fmt, ...) {						// only for MSVC compiler (maybe)
 	va_list args;
 	va_start(args, fmt);
@@ -79,6 +60,67 @@ char* strf(const char* fmt, ...) {						// only for MSVC compiler (maybe)
 	va_end(args);
 	return str;
 }
+
+char* read_file(const char* path) {
+	FILE* file = fopen(path, "rb");		// Day 11. 28:00
+	if (!file) {
+		return NULL;
+	}
+	fseek(file, 0, SEEK_END);
+	long size = ftell(file);
+	fseek(file, 0, SEEK_SET);
+	char* buf = xmalloc(size + 1);
+	if (size != 0) {
+		if (fread(buf, size, 1, file) != 1) {
+			fclose(file);
+			free(buf);
+			return NULL;
+		}
+	}
+	fclose(file);
+	buf[size] = 0;
+	return buf;
+}
+
+bool write_file(const char* path, const char* buf, size_t len) {
+	FILE* file = fopen(path, "w");		// not "wb"
+	if (!file) {
+		return false;
+	}
+	bool result = false;
+	if (fwrite(buf, len, 1, file) != 1) {
+		goto done;
+	}
+	result = true;
+done:
+	fclose(file);
+	return result;
+}
+
+const char* get_ext(const char* path) {
+	for (const char* ptr = path + strlen(path); ptr != path; ptr--) {
+		if (ptr[-1] == '.') {
+			return ptr;
+		}
+	}
+	return NULL;
+}
+
+char* replace_ext(const char* path, const char* new_ext) {
+	const char* ext = get_ext(path);
+	if (!ext) {
+		return NULL;
+	}
+	size_t base_len = ext - path;
+	size_t new_ext_len = strlen(new_ext);
+	size_t new_path_len = base_len + new_ext_len;
+	char* new_path = xmalloc(new_path_len + 1);		// +1 for the string terminator
+	memcpy(new_path, path, base_len);
+	memcpy(new_path + base_len, new_ext, new_ext_len);
+	new_path[new_path_len] = 0;
+	return new_path;
+}
+
 
 // stretchy buffer (dynamically growen array / cpp vector like). sean burret
 
@@ -174,8 +216,8 @@ typedef struct Arena {
 } Arena;
 
 #define ARENA_ALIGNMENT 8	
-//#define ARENA_BLOCK_SIZE (1024 * 1024)
-#define ARENA_BLOCK_SIZE 1024
+#define ARENA_BLOCK_SIZE (1024 * 1024)
+//#define ARENA_BLOCK_SIZE 1024
 
 void arena_grow(Arena* arena, size_t min_size) {
 	size_t size = ALIGN_UP(MAX(ARENA_BLOCK_SIZE, min_size), ARENA_ALIGNMENT);
@@ -250,6 +292,7 @@ void intern_test(void) {
 void common_test(void) {
 	buf_test();
 	intern_test();
+	map_test();
 
 	char* str1 = strf("%d %d", 1, 2);
 	assert(strcmp(str1, "1 2") == 0);

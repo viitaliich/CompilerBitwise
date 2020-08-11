@@ -1205,7 +1205,7 @@ void resolve_test(void) {
 		//        "struct S { t: T[n]; }",
 	};
 	for (size_t i = 0; i < sizeof(code) / sizeof(*code); i++) {
-		init_stream(code[i]);
+		init_stream(NULL,code[i]);
 		Decl* decl = parse_decl();
 		sym_global_decl(decl);
 	}
